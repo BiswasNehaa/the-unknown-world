@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Unknown</title>
+<style>
+  :root{
+    --amber:#e8b06b;
+    --teal:#3fa9a0;
+    --black:#050403;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    width:100%;height:100%;
+    background:var(--black);
+    overflow:hidden;
+    font-family:'Courier New', monospace;
+  }
+  #stage{
+    position:relative;
+    width:100%;height:100vh;
+  }
+
+  #black-intro{
+    position:absolute;inset:0;
+    background:var(--black);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+    opacity:1;
+  }
+  #black-intro p{
+    color:var(--amber);
+    letter-spacing:4px;
+    font-size:1.1rem;
+    opacity:0;
+    margin-bottom:14px;
+  }
+  #black-intro p.location{ font-size:0.85rem; color:#7a8a8a; letter-spacing:3px; }
+
+  .frame{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    background-size:cover;
+    background-position:center;
+    opacity:0;
+    transition:opacity 2.5s ease-in-out;
+    z-index:5;
+  }
+  #frame0{background-image:url('assets/intro/frame0-wormhole.png');}
+  #frame1{background-image:url('assets/intro/frame1-sky.png');}
+  #frame2{background-image:url('assets/intro/frame2-descend.png');}
+  #frame3{background-image:url('assets/intro/frame3-landed.png');}
+
+  .frame.visible{opacity:1;}
+
+  /* click-to-start overlay (browsers block audio autoplay) */
+  #start-overlay{
+    position:absolute;inset:0;
+    background:#000;
+    z-index:50;
+    display:flex;
+    align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  #start-overlay p{
+    color:var(--teal);
+    letter-spacing:4px;
+    font-size:0.9rem;
+    border:1px solid var(--teal);
+    padding:16px 34px;
+  }
+
+  #dust-overlay{
+    position:absolute;inset:0;
+    z-index:6;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%);
+    opacity:0;
+    transition:opacity 2s ease-in;
+    pointer-events:none;
+  }
+
+  #arrival{
+    position:absolute;
+    bottom:12%;
+    left:0;right:0;
+    text-align:center;
+    z-index:15;
+    opacity:0;
+    transition:opacity 2s ease-in;
+  }
+  #arrival h1{
+    color:var(--amber);
+    font-size:1.6rem;
+    letter-spacing:6px;
+    font-weight:400;
+    margin-bottom:28px;
+    text-shadow:0 0 20px rgba(232,176,107,0.4);
+  }
+  #enter-btn{
+    background:transparent;
+    border:1px solid var(--teal);
+    color:#dff5f2;
+    padding:14px 38px;
+    font-family:'Courier New', monospace;
+    letter-spacing:4px;
+    font-size:0.85rem;
+    cursor:pointer;
+    transition:all 0.4s ease;
+    pointer-events:auto;
+  }
+  #enter-btn:hover{
+    background:var(--teal);
+    color:#00110f;
+    box-shadow:0 0 25px rgba(63,169,160,0.6);
+  }
+
+  #skip-hint{
+    position:absolute;
+    bottom:20px;right:24px;
+    color:#555;
+    font-size:0.7rem;
+    letter-spacing:2px;
+    z-index:25;
+    cursor:pointer;
+    opacity:0.6;
+  }
+  #skip-hint:hover{opacity:1;}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <div id="black-intro">
+    <p id="line1">TRANSMISSION RECEIVED</p>
+    <p id="line2" class="location">LOCATION UNKNOWN</p>
+    <p id="line3" class="location">YEAR 2187</p>
+  </div>
+
+  <div class="frame" id="frame0"></div>
+  <div class="frame" id="frame1"></div>
+  <div class="frame" id="frame2"></div>
+  <div class="frame" id="frame3"></div>
+  <div id="dust-overlay"></div>
+
+  <div id="arrival">
+    <h1>YOU HAVE ARRIVED</h1>
+    <button id="enter-btn">ENTER THE UNKNOWN</button>
+  </div>
+
+  <div id="skip-hint">skip intro</div>
+
+  <div id="start-overlay"><p>CLICK TO BEGIN TRANSMISSION</p></div>
+
+  <audio id="sfx-rumble" src="assets/audio/rumble.mp3" preload="auto"></audio>
+  <audio id="sfx-beep" src="assets/audio/beep.mp3" preload="auto"></audio>
+  <audio id="sfx-whoosh" src="assets/audio/whoosh.mp3" preload="auto"></audio>
+
+</div>
+
+<script>
+const rumble = document.getElementById('sfx-rumble');
+const beep = document.getElementById('sfx-beep');
+const whoosh = document.getElementById('sfx-whoosh');
+
+const timeline = [
+  { fn: () => { rumble.volume = 0.6; rumble.play(); }, at: 0 },
+  { fn: () => { fadeInText('line1'); beep.play(); }, at: 600 },
+  { fn: () => fadeInText('line2'), at: 2200 },
+  { fn: () => fadeInText('line3'), at: 3000 },
+  { fn: () => hideBlackIntro(), at: 4600 },
+  { fn: () => showFrame('frame0'), at: 4700 },   // wormhole
+  { fn: () => { showFrame('frame1'); whoosh.volume = 0.7; whoosh.play(); }, at: 9000 }, // sky
+  { fn: () => showFrame('frame2'), at: 13000 },  // descend
+  { fn: () => showFrame('frame3'), at: 17000 },  // landed
+  { fn: () => showDust(), at: 17500 },
+  { fn: () => showArrival(), at: 19500 },
+  { fn: () => fadeOutRumble(), at: 19500 },
+];
+
+function fadeOutRumble(){
+  let v = rumble.volume;
+  const step = setInterval(() => {
+    v -= 0.05;
+    if (v <= 0){ rumble.pause(); clearInterval(step); }
+    else rumble.volume = v;
+  }, 150);
+}
+
+function fadeInText(id){
+  const el = document.getElementById(id);
+  el.style.transition = 'opacity 1.2s ease-in';
+  el.style.opacity = 1;
+}
+function hideBlackIntro(){
+  const el = document.getElementById('black-intro');
+  el.style.transition = 'opacity 1.5s ease-out';
+  el.style.opacity = 0;
+  setTimeout(()=> el.style.display='none', 1500);
+}
+function showFrame(id){
+  document.getElementById(id).classList.add('visible');
+}
+function showDust(){
+  document.getElementById('dust-overlay').style.opacity = 1;
+}
+function showArrival(){
+  document.getElementById('arrival').style.opacity = 1;
+}
+
+let timers = [];
+function runTimeline(){
+  timers = timeline.map(step => setTimeout(step.fn, step.at));
+}
+
+document.getElementById('start-overlay').addEventListener('click', function(){
+  this.style.display = 'none';
+  runTimeline();
+});
+
+document.getElementById('skip-hint').addEventListener('click', () => {
+  timers.forEach(t => clearTimeout(t));
+  rumble.pause(); whoosh.pause();
+  document.getElementById('black-intro').style.display = 'none';
+  ['frame0','frame1','frame2','frame3'].forEach(id => document.getElementById(id).classList.add('visible'));
+  document.getElementById('dust-overlay').style.opacity = 1;
+  document.getElementById('arrival').style.opacity = 1;
+});
+
+document.getElementById('enter-btn').addEventListener('click', () => {
+  document.getElementById('stage').style.transition = 'opacity 1.5s ease-out';
+  document.getElementById('stage').style.opacity = 0;
+  setTimeout(() => {
+    alert('Next: ruins hub scene goes here.');
+  }, 1500);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Unknown</title>
+<style>
+  :root{
+    --amber:#e8b06b;
+    --teal:#3fa9a0;
+    --black:#050403;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{ background:var(--black); }
+  body{
+    background:var(--black);
+    color:#fff;
+    font-family:'Courier New', monospace;
+    /* tall body = "scroll room"; the canvas below is fixed full-screen */
+    height:500vh;
+    overflow-x:hidden;
+  }
+
+  /* the 3D scene sits fixed behind everything */
+  #scene{
+    position:fixed; inset:0;
+    width:100%; height:100vh;
+    z-index:1;
+    background:var(--black);
+  }
+  #scene canvas{ display:block; }
+
+  /* overlay text/UI, fixed on top, doesn't block scrolling */
+  #overlay{
+    position:fixed; inset:0;
+    z-index:2;
+    pointer-events:none;
+  }
+
+  #transmission{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    opacity:0;
+    width:100%;
+    padding:0 20px;
+  }
+  #transmission .t1{
+    color:var(--amber);
+    letter-spacing:8px;
+    font-size:clamp(1rem, 3.4vw, 1.5rem);
+    text-shadow:0 0 24px rgba(232,176,107,0.45);
+  }
+  #transmission .t2{
+    margin-top:18px;
+    color:#7a8a8a;
+    letter-spacing:5px;
+    font-size:clamp(0.65rem, 1.8vw, 0.85rem);
+  }
+
+  #scroll-hint{
+    position:absolute;
+    bottom:38px; left:50%;
+    transform:translateX(-50%);
+    color:#8fdfd8;
+    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
+    font-weight:400;
+    letter-spacing:7px;
+    font-size:0.82rem;
+    text-transform:uppercase;
+    text-align:center;
+    opacity:0;
+  }
+  #scroll-hint .arrow{
+    display:block;
+    margin-top:12px;
+    font-size:1.05rem;
+    animation:bob 1.9s ease-in-out infinite;
+  }
+  @keyframes bob{
+    0%,100%{ transform:translateY(0);  opacity:0.45; }
+    50%    { transform:translateY(9px); opacity:1; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="scene"></div>
+
+  <div id="overlay">
+    <div id="transmission">
+      <div class="t1">TRANSMISSION RECEIVED</div>
+      <div class="t2">LOCATION&nbsp;UNKNOWN</div>
+    </div>
+    <div id="scroll-hint">
+      BEGIN
+      <span class="arrow">&#8595;</span>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+  /* ================================================================
+     THE UNKNOWN  —  Module 1: the opening spine  (no sound)
+     black screen -> "TRANSMISSION RECEIVED" -> scroll drifts the
+     camera forward through a 3D starfield (deep space appears).
+     Scroll = progression of the movie. Nothing else yet.
+  ================================================================ */
+
+  // scroll-driven, so always begin at the very top on load/refresh
+  if('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
+
+  const sceneEl = document.getElementById('scene');
+
+  const scene = new THREE.Scene();
+  // distant stars sink into black -> depth without any modelling
+  scene.fog = new THREE.FogExp2(0x050403, 0.00045);
+
+  const camera = new THREE.PerspectiveCamera(
+    70, window.innerWidth / window.innerHeight, 0.1, 4000
+  );
+  camera.position.set(0, 0, 600);
+
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  sceneEl.appendChild(renderer.domElement);
+
+  /* soft round sprite -> stars read as glowing points, not squares */
+  function makeStarTexture(){
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32,32,0, 32,32,32);
+    g.addColorStop(0.0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.2, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.25)');
+    g.addColorStop(1.0, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+  const starTex = makeStarTexture();
+
+  /* ---- build the starfield ---- */
+  const STAR_COUNT = 6000;
+  const positions = new Float32Array(STAR_COUNT * 3);
+  const colors    = new Float32Array(STAR_COUNT * 3);
+
+  const palette = [
+    [1.00, 1.00, 1.00],   // white (most common)
+    [1.00, 1.00, 1.00],
+    [0.91, 0.69, 0.42],   // amber
+    [0.25, 0.66, 0.63],   // teal
+  ];
+
+  for(let i=0;i<STAR_COUNT;i++){
+    positions[i*3+0] = (Math.random()-0.5) * 1600;
+    positions[i*3+1] = (Math.random()-0.5) * 1600;
+    positions[i*3+2] = -2200 + Math.random() * 3000;  // deep, with some behind us
+    const col = palette[(Math.random()*palette.length)|0];
+    const b = 0.6 + Math.random()*0.4;               // brightness variation
+    colors[i*3+0] = col[0]*b;
+    colors[i*3+1] = col[1]*b;
+    colors[i*3+2] = col[2]*b;
+  }
+
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  starGeo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+
+  const starMat = new THREE.PointsMaterial({
+    size: 6,
+    map: starTex,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0,                       // fades in as we scroll into space
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+  });
+
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
+
+  /* ---- scroll -> progress (0..1), smoothed for a cinematic glide ---- */
+  let targetProgress = 0;
+  let progress = 0;
+  function computeScroll(){
+    const max = document.body.scrollHeight - window.innerHeight;
+    targetProgress = max > 0 ? (window.scrollY / max) : 0;
+  }
+  window.addEventListener('scroll', computeScroll, { passive:true });
+  computeScroll();
+
+  /* ---- subtle mouse parallax ---- */
+  let mx = 0, my = 0, lookX = 0, lookY = 0;
+  window.addEventListener('mousemove', (e)=>{
+    mx = (e.clientX / window.innerWidth  - 0.5);
+    my = (e.clientY / window.innerHeight - 0.5);
+  });
+
+  const transmissionEl = document.getElementById('transmission');
+  const scrollHintEl   = document.getElementById('scroll-hint');
+
+  let intro = 0;                       // eases 0 -> 1 to fade the opening in
+  const clock = new THREE.Clock();
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    progress += (targetProgress - progress) * 0.06;      // damped scroll
+
+    // camera flies forward through the field
+    const camZ = 600 - progress * 2200;                  // 600 -> -1600
+    camera.position.z = camZ;
+
+    // gentle parallax on the look target
+    lookX += ( mx*60 - lookX) * 0.05;
+    lookY += (-my*60 - lookY) * 0.05;
+    camera.lookAt(lookX, lookY, camZ - 500);
+
+    // slow drift gives the field life
+    stars.rotation.z = t * 0.01;
+
+    // stars fade in between 4% and 34% of the scroll
+    starMat.opacity = THREE.MathUtils.clamp((progress - 0.04) / 0.30, 0, 1);
+
+    // transmission text: eases in on load, fades out by 10% scroll
+    intro += (1 - intro) * 0.02;
+    const scrollFade = THREE.MathUtils.clamp(1 - progress / 0.10, 0, 1);
+    transmissionEl.style.opacity = (intro * scrollFade).toFixed(3);
+
+    // scroll hint: shows once intro is in, hides as soon as we move
+    const hint = THREE.MathUtils.clamp(1 - progress / 0.05, 0, 1) * intro;
+    scrollHintEl.style.opacity = hint.toFixed(3);
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  </script>
+</body>
+</html>
