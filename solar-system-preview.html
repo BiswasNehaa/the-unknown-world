@@ -50,6 +50,13 @@
     animation:beckon 1.8s ease-in-out infinite;
   }
   @keyframes beckon{ 0%,100%{ opacity:0.5; } 50%{ opacity:1; } }
+  /* These are atmosphere, not interface: soft near-field cloud volumes used only after planet selection. */
+  #cloud-veil{ position:fixed; inset:-12%; z-index:4; pointer-events:none; opacity:0; overflow:hidden; mix-blend-mode:screen; }
+  .cloud-bank{ position:absolute; inset:-18%; opacity:0; filter:blur(26px); background-repeat:no-repeat; }
+  .cloud-bank.one{ background-image:radial-gradient(ellipse at 18% 56%,rgba(255,255,255,.94) 0 8%,rgba(232,246,247,.72) 16%,transparent 38%),radial-gradient(ellipse at 67% 38%,rgba(255,255,255,.92) 0 12%,rgba(214,238,240,.6) 22%,transparent 45%); animation:cloudDrift 8s ease-in-out infinite alternate; }
+  .cloud-bank.two{ background-image:radial-gradient(ellipse at 78% 70%,rgba(255,255,255,.96) 0 9%,rgba(220,243,244,.76) 20%,transparent 43%),radial-gradient(ellipse at 36% 23%,rgba(255,255,255,.72) 0 10%,transparent 35%); animation:cloudDrift 11s ease-in-out infinite alternate-reverse; }
+  .cloud-bank.three{ background:linear-gradient(105deg,transparent 15%,rgba(238,250,250,.55) 44%,rgba(255,255,255,.8) 54%,transparent 79%); animation:cloudDrift 6s linear infinite alternate; }
+  @keyframes cloudDrift{ to{ transform:translate3d(7%,-5%,0) scale(1.12); } }
 </style>
 </head>
 <body>
@@ -61,6 +68,7 @@
     <div id="note">preview module &middot; hover the teal planet &middot; planets &amp; flares still rough</div>
   </div>
   <div id="planet-label"><span class="pl-title">My planet</span><span class="pl-hint">click to enter &#8594;</span></div>
+  <div id="cloud-veil"><div class="cloud-bank one"></div><div class="cloud-bank two"></div><div class="cloud-bank three"></div></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
@@ -266,13 +274,32 @@
 
   // raycast for hover / click on her planet
   const ray = new THREE.Raycaster(), _wp = new THREE.Vector3(), label = document.getElementById('planet-label');
-  let hover = false, selected = false;
+  let hover = false, selected = false, arrivalStarted = false, arrivalTime = 0;
+  const arrivalOrigin = new THREE.Vector3(), arrivalTarget = new THREE.Vector3(), arrivalDir = new THREE.Vector3();
   addEventListener('pointermove', e=>{
     ray.setFromCamera({ x:(e.clientX/innerWidth)*2-1, y:-(e.clientY/innerHeight)*2+1 }, camera);
     hover = !!myPlanet && ray.intersectObject(myPlanet).length > 0;
     document.body.style.cursor = hover ? 'pointer' : 'default';
   });
-  addEventListener('click', ()=>{ if(hover) selected = !selected; });
+  addEventListener('click', ()=>{
+    if(!hover || arrivalStarted) return;
+    selected = true; arrivalStarted = true; arrivalTime = clock.getElapsedTime();
+    myPlanet.getWorldPosition(arrivalTarget);
+    arrivalOrigin.copy(camera.position);
+    arrivalDir.copy(arrivalOrigin).sub(arrivalTarget).normalize();
+    document.body.style.cursor = 'default';
+    document.getElementById('overlay').style.opacity = 0;
+    label.style.opacity = 0;
+    // Reveal the detailed world only when we commit to the journey.
+    myPlanet.geometry.dispose();
+    myPlanet.geometry = new THREE.SphereGeometry(myPlanet.userData.size, 128, 96);
+    myPlanet.material.map = detailedWorld;
+    myPlanet.material.bumpMap = detailedWorld;
+    myPlanet.material.bumpScale = 0.72;
+    myPlanet.material.roughness = 0.82;
+    myPlanet.material.needsUpdate = true;
+    myPlanet.add(arrivalClouds);
+  });
 
   /* ================================================================
      UPGRADES — depth wash, sun prominences, planet atmospheres,
@@ -321,6 +348,20 @@
     myPlanet.material.map = new THREE.CanvasTexture(c); myPlanet.material.needsUpdate = true;
   })();
 
+  // High-detail terrain appears during the approach: oceans, ice, relief and the faint archaeological geometry live in one optimized texture.
+  const detailedWorld = new THREE.TextureLoader().load('assets/planet/unknown-albedo.png');
+  detailedWorld.encoding = THREE.sRGBEncoding;
+  detailedWorld.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  function makeArrivalCloudTexture(){
+    const s=768,c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
+    for(let i=0;i<170;i++){ const px=Math.random()*s,py=Math.random()*s,r=16+Math.random()*52,a=.10+Math.random()*.22;
+      const g=x.createRadialGradient(px,py,0,px,py,r); g.addColorStop(0,`rgba(255,255,255,${a})`); g.addColorStop(.52,`rgba(231,247,247,${a*.52})`); g.addColorStop(1,'rgba(230,246,246,0)');
+      x.fillStyle=g; x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill(); }
+    const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; return t;
+  }
+  const arrivalCloudMat = new THREE.MeshPhongMaterial({ map:makeArrivalCloudTexture(), transparent:true, opacity:0, depthWrite:false, shininess:3 });
+  const arrivalClouds = new THREE.Mesh(new THREE.SphereGeometry(PLANETS[1].size*1.026,96,72), arrivalCloudMat);
+
   /* ---- scroll -> progress ---- */
   let targetProgress = 0, progress = 0;
   function computeScroll(){
@@ -345,13 +386,30 @@
     progress += (targetProgress - progress) * 0.06;
     const p = progress;
 
-    // drift toward the sun as you scroll (it grows, never quite reached)
-    const camZ = 900 - p*640;                  // 900 -> 260
-    camera.position.set(0, 0, camZ);
-    const targetLookX = mx*30, targetLookY = -my*30;
-    lookX += (targetLookX - lookX)*0.05;
-    lookY += (targetLookY - lookY)*0.05;
-    camera.lookAt(lookX, lookY, 0);
+    // Until selection this is the original system camera. After selection it becomes a single, continuous arrival vector.
+    let arrival = 0;
+    if(!arrivalStarted){
+      const camZ = 900 - p*640;                // 900 -> 260
+      camera.position.set(0, 0, camZ);
+      const targetLookX = mx*30, targetLookY = -my*30;
+      lookX += (targetLookX - lookX)*0.05;
+      lookY += (targetLookY - lookY)*0.05;
+      camera.lookAt(lookX, lookY, 0);
+    } else {
+      // A long easing curve gives the approach a perceptible acceleration instead of a click-cut.
+      arrival = MU.clamp((t-arrivalTime)/12.5,0,1);
+      const velocity = Math.pow(arrival, 2.35);
+      const startDistance = arrivalOrigin.distanceTo(arrivalTarget);
+      const distance = MU.lerp(startDistance, 2.6, velocity);
+      camera.position.copy(arrivalTarget).addScaledVector(arrivalDir, distance);
+      camera.lookAt(arrivalTarget);
+      // Orbiting ceases at the exact moment the route is locked; the world now feels monumental and still.
+      document.getElementById('cloud-veil').style.opacity = MU.smoothstep(arrival,0.57,0.78) * 0.96;
+      const banks = document.querySelectorAll('.cloud-bank');
+      banks[0].style.opacity = MU.smoothstep(arrival,0.54,0.79);
+      banks[1].style.opacity = MU.smoothstep(arrival,0.65,0.91);
+      banks[2].style.opacity = MU.smoothstep(arrival,0.73,1);
+    }
 
     // living surface: slow spin + texture churn, shell drifts opposite
     sun.rotation.y   += 0.0012;
@@ -367,11 +425,12 @@
     // planets orbit + reveal (a touch after the star)
     const sysFade = MU.clamp((p - 0.12)/0.22, 0, 1);
     for(const pl of planets){
-      const u = pl.mesh.userData; u.angle += u.speed*0.01;
+      const u = pl.mesh.userData; if(!arrivalStarted) u.angle += u.speed*0.01;
       pl.mesh.position.set(Math.cos(u.angle)*u.r, Math.sin(u.angle)*u.r, 0);
       pl.mesh.rotation.y += 0.01;
-      pl.mat.opacity = sysFade;
-      pl.ringMat.opacity = sysFade*0.22;
+      const spaceRemain = arrivalStarted ? 1-MU.smoothstep(arrival,0.06,0.31) : 1;
+      pl.mat.opacity = sysFade * (pl.mesh===myPlanet ? 1 : spaceRemain);
+      pl.ringMat.opacity = sysFade*0.22*spaceRemain;
     }
     // her planet: ease scale + halo + floating label
     if(myPlanet){
@@ -380,10 +439,10 @@
       halo.position.copy(myPlanet.position);
       const hs = myPlanet.userData.size*5.5; halo.scale.set(hs, hs, 1);
       const beckon = (0.14 + 0.07*Math.sin(t*2.2)) * sysFade;   // always faintly glows to invite the click
-      const wantHalo = (hover||selected) ? 0.85*sysFade : beckon;
+      const wantHalo = arrivalStarted ? 0 : ((hover||selected) ? 0.85*sysFade : beckon);
       haloMat.opacity += (wantHalo - haloMat.opacity)*0.15;
       myPlanet.getWorldPosition(_wp); _wp.project(camera);
-      if(sysFade>0.2 && _wp.z<1){
+      if(!arrivalStarted && sysFade>0.2 && _wp.z<1){
         label.style.left = ((_wp.x*0.5+0.5)*innerWidth)+'px';
         label.style.top  = ((-_wp.y*0.5+0.5)*innerHeight)+'px';
         label.style.opacity = (hover||selected) ? 1 : 0;
@@ -392,25 +451,31 @@
 
     // fade everything up from black like the galaxy did
     const fade = MU.clamp((p - 0.03)/0.18, 0, 1);
-    sunMat.opacity      = fade;
-    shellMat.opacity    = fade * 0.4;
-    coronaInMat.opacity = fade * (0.55 + 0.08*Math.sin(t*0.9));
-    coronaOutMat.opacity= fade * (0.38 + 0.06*Math.sin(t*0.6));
-    bgMat.opacity       = fade * 0.4;
-    smudgeMat.opacity   = fade * 0.14;
+    const spaceFade = arrivalStarted ? 1-MU.smoothstep(arrival,0.06,0.31) : 1;
+    sunMat.opacity      = fade * spaceFade;
+    shellMat.opacity    = fade * 0.4 * spaceFade;
+    coronaInMat.opacity = fade * (0.55 + 0.08*Math.sin(t*0.9)) * spaceFade;
+    coronaOutMat.opacity= fade * (0.38 + 0.06*Math.sin(t*0.6)) * spaceFade;
+    bgMat.opacity       = fade * 0.4 * (arrivalStarted ? 1-MU.smoothstep(arrival,.36,.68) : 1);
+    smudgeMat.opacity   = fade * 0.14 * spaceFade;
 
     // upgrades: wash fade, prominence flicker, atmosphere follow
-    for(const w of washes) w.m.opacity = fade*w.op;
+    for(const w of washes) w.m.opacity = fade*w.op*spaceFade;
     for(const pr of proms){
       const fl = 0.5 + 0.5*Math.sin(t*3 + pr.ph);
-      pr.m.opacity = fade*(0.3 + 0.45*fl);
+      pr.m.opacity = fade*(0.3 + 0.45*fl)*spaceFade;
       pr.s.scale.set(pr.base*0.5, pr.base*(0.8 + 0.55*fl), 1);
     }
     for(const pl of planets){
       pl.atmo.position.copy(pl.mesh.position);
       pl.atmo.scale.set(pl.atmoK, pl.atmoK, 1);
       const mine = pl.mesh === myPlanet;
-      pl.atmoMat.opacity = sysFade*(mine ? (0.45 + ((hover||selected)?0.3:0)) : 0.24);
+      pl.atmoMat.opacity = sysFade*(mine ? (arrivalStarted ? (0.18 + MU.smoothstep(arrival,.18,.56)*0.72) : (0.45 + ((hover||selected)?0.3:0))) : 0.24*spaceFade);
+    }
+    if(arrivalStarted){
+      // Separate cloud shell creeps across the world first; the nearby volume then takes over the frame.
+      arrivalCloudMat.opacity = MU.smoothstep(arrival,.25,.65)*.76;
+      arrivalClouds.rotation.y += .00065;
     }
 
     renderer.render(scene, camera);
