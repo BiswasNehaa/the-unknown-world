@@ -1,492 +1,697 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Unknown — The Sun (preview)</title>
-<style>
-  :root{ --amber:#e8b06b; --teal:#3fa9a0; --black:#050403; }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html{ background:var(--black); }
-  body{
-    background:var(--black); color:#fff;
-    font-family:'Courier New', monospace;
-    height:500vh; overflow-x:hidden;
-  }
-  #scene{ position:fixed; inset:0; width:100%; height:100vh; z-index:1; background:var(--black); }
-  #scene canvas{ display:block; }
-  #overlay{ position:fixed; inset:0; z-index:2; pointer-events:none; }
 
-  #caption{
-    position:absolute; top:26px; left:50%; transform:translateX(-50%);
-    text-align:center; color:#c79b6f; letter-spacing:4px;
-    font-size:0.72rem; text-transform:uppercase; width:100%; padding:0 20px;
-  }
-  #scroll-hint{
-    position:absolute; bottom:34px; left:50%; transform:translateX(-50%);
-    color:#f0c890;
-    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
-    letter-spacing:7px; font-size:0.8rem; text-transform:uppercase; text-align:center;
-  }
-  #scroll-hint .arrow{ display:block; margin-top:10px; font-size:1.05rem; animation:bob 1.9s ease-in-out infinite; }
-  @keyframes bob{ 0%,100%{ transform:translateY(0); opacity:0.45; } 50%{ transform:translateY(9px); opacity:1; } }
-  #note{
-    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-    color:#5a4c3c; font-size:0.62rem; letter-spacing:1px; text-align:center; width:100%;
-  }
-  #planet-label{
-    position:absolute; transform:translate(-50%,-150%); opacity:0; transition:opacity .2s;
-    display:flex; flex-direction:column; align-items:center; gap:5px;
-    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
-    text-transform:uppercase; white-space:nowrap;
-  }
-  #planet-label .pl-title{
-    color:#bfeae4; letter-spacing:3px; font-size:0.72rem;
-    text-shadow:0 0 12px rgba(63,169,160,0.85);
-  }
-  #planet-label .pl-hint{
-    color:#f0c890; letter-spacing:4px; font-size:0.58rem;
-    text-shadow:0 0 10px rgba(232,176,107,0.7);
-    animation:beckon 1.8s ease-in-out infinite;
-  }
-  @keyframes beckon{ 0%,100%{ opacity:0.5; } 50%{ opacity:1; } }
-  /* These are atmosphere, not interface: soft near-field cloud volumes used only after planet selection. */
-  #cloud-veil{ position:fixed; inset:-12%; z-index:4; pointer-events:none; opacity:0; overflow:hidden; mix-blend-mode:screen; }
-  .cloud-bank{ position:absolute; inset:-18%; opacity:0; filter:blur(26px); background-repeat:no-repeat; }
-  .cloud-bank.one{ background-image:radial-gradient(ellipse at 18% 56%,rgba(255,255,255,.94) 0 8%,rgba(232,246,247,.72) 16%,transparent 38%),radial-gradient(ellipse at 67% 38%,rgba(255,255,255,.92) 0 12%,rgba(214,238,240,.6) 22%,transparent 45%); animation:cloudDrift 8s ease-in-out infinite alternate; }
-  .cloud-bank.two{ background-image:radial-gradient(ellipse at 78% 70%,rgba(255,255,255,.96) 0 9%,rgba(220,243,244,.76) 20%,transparent 43%),radial-gradient(ellipse at 36% 23%,rgba(255,255,255,.72) 0 10%,transparent 35%); animation:cloudDrift 11s ease-in-out infinite alternate-reverse; }
-  .cloud-bank.three{ background:linear-gradient(105deg,transparent 15%,rgba(238,250,250,.55) 44%,rgba(255,255,255,.8) 54%,transparent 79%); animation:cloudDrift 6s linear infinite alternate; }
-  @keyframes cloudDrift{ to{ transform:translate3d(7%,-5%,0) scale(1.12); } }
-</style>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Unknown — The Sun (preview)</title>
+  <style>
+    :root {
+      --amber: #e8b06b;
+      --teal: #3fa9a0;
+      --black: #050403;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--black);
+    }
+
+    body {
+      background: var(--black);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      height: 500vh;
+      overflow-x: hidden;
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: 1;
+      background: var(--black);
+    }
+
+    #scene canvas {
+      display: block;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #caption {
+      position: absolute;
+      top: 26px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      color: #c79b6f;
+      letter-spacing: 4px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      width: 100%;
+      padding: 0 20px;
+    }
+
+    #scroll-hint {
+      position: absolute;
+      bottom: 34px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #f0c890;
+      font-family: 'Century Gothic', 'Questrial', 'Segoe UI', system-ui, sans-serif;
+      letter-spacing: 7px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    #scroll-hint .arrow {
+      display: block;
+      margin-top: 10px;
+      font-size: 1.05rem;
+      animation: bob 1.9s ease-in-out infinite;
+    }
+
+    @keyframes bob {
+
+      0%,
+      100% {
+        transform: translateY(0);
+        opacity: 0.45;
+      }
+
+      50% {
+        transform: translateY(9px);
+        opacity: 1;
+      }
+    }
+
+    #note {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #5a4c3c;
+      font-size: 0.62rem;
+      letter-spacing: 1px;
+      text-align: center;
+      width: 100%;
+    }
+
+    #planet-label {
+      position: absolute;
+      transform: translate(-50%, -150%);
+      opacity: 0;
+      transition: opacity .2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      font-family: 'Century Gothic', 'Questrial', 'Segoe UI', system-ui, sans-serif;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    #planet-label .pl-title {
+      color: #bfeae4;
+      letter-spacing: 3px;
+      font-size: 0.72rem;
+      text-shadow: 0 0 12px rgba(63, 169, 160, 0.85);
+    }
+
+    #planet-label .pl-hint {
+      color: #f0c890;
+      letter-spacing: 4px;
+      font-size: 0.58rem;
+      text-shadow: 0 0 10px rgba(232, 176, 107, 0.7);
+      animation: beckon 1.8s ease-in-out infinite;
+    }
+
+    @keyframes beckon {
+
+      0%,
+      100% {
+        opacity: 0.5;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    #cloud-veil {
+      position: fixed;
+      inset: -12%;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      overflow: hidden;
+      mix-blend-mode: screen;
+    }
+
+    .cloud-bank {
+      position: absolute;
+      inset: -18%;
+      opacity: 0;
+      filter: blur(26px);
+      background-repeat: no-repeat;
+    }
+
+    .cloud-bank.one {
+      background-image: radial-gradient(ellipse at 18% 56%, rgba(255, 255, 255, .94) 0 8%, rgba(232, 246, 247, .72) 16%, transparent 38%), radial-gradient(ellipse at 67% 38%, rgba(255, 255, 255, .92) 0 12%, rgba(214, 238, 240, .6) 22%, transparent 45%);
+      animation: cloudDrift 8s ease-in-out infinite alternate;
+    }
+
+    .cloud-bank.two {
+      background-image: radial-gradient(ellipse at 78% 70%, rgba(255, 255, 255, .96) 0 9%, rgba(220, 243, 244, .76) 20%, transparent 43%), radial-gradient(ellipse at 36% 23%, rgba(255, 255, 255, .72) 0 10%, transparent 35%);
+      animation: cloudDrift 11s ease-in-out infinite alternate-reverse;
+    }
+
+    .cloud-bank.three {
+      background: linear-gradient(105deg, transparent 15%, rgba(238, 250, 250, .55) 44%, rgba(255, 255, 255, .8) 54%, transparent 79%);
+      animation: cloudDrift 6s linear infinite alternate;
+    }
+
+    @keyframes cloudDrift {
+      to {
+        transform: translate3d(7%, -5%, 0) scale(1.12);
+      }
+    }
+  </style>
 </head>
+
 <body>
 
   <div id="scene"></div>
   <div id="overlay">
     <div id="caption">Falling inward &middot; a system resolves</div>
     <div id="scroll-hint">SCROLL<span class="arrow">&#8595;</span></div>
-    <div id="note">preview module &middot; hover the teal planet &middot; planets &amp; flares still rough</div>
+    <div id="note">preview module &middot; hover the teal planet &middot; click to arrive</div>
   </div>
-  <div id="planet-label"><span class="pl-title">My planet</span><span class="pl-hint">click to enter &#8594;</span></div>
-  <div id="cloud-veil"><div class="cloud-bank one"></div><div class="cloud-bank two"></div><div class="cloud-bank three"></div></div>
+  <div id="planet-label"><span class="pl-title">My planet</span><span class="pl-hint">click to enter &#8594;</span>
+  </div>
+  <div id="cloud-veil">
+    <div class="cloud-bank one"></div>
+    <div class="cloud-bank two"></div>
+    <div class="cloud-bank three"></div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-  /* ================================================================
-     THE UNKNOWN — the sun PREVIEW (standalone module) v1
-     Next beat of the cosmic zoom: we've fallen in from the galaxy and
-     one point of light resolves into OUR star. Just the sun for now —
-     a living amber sphere + corona. Planets & flares are later passes.
-     Nothing here touches galaxy-preview.html or index.html.
-  ================================================================ */
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
 
-  if('scrollRestoration' in history) history.scrollRestoration = 'manual';
-  window.scrollTo(0, 0);
+    const MU = THREE.MathUtils;
+    const sceneEl = document.getElementById('scene');
 
-  const MU = THREE.MathUtils;
-  const sceneEl = document.getElementById('scene');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050403, 0.00015);
 
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x050403, 0.00015);
+    const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 9000);
+    camera.position.set(0, 0, 900);
 
-  const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 9000);
-  camera.position.set(0, 0, 900);
-
-  const renderer = new THREE.WebGLRenderer({ antialias:true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
-  sceneEl.appendChild(renderer.domElement);
-
-  /* ---- soft round sprite (glows, corona, stars) ---- */
-  function makeGlowTexture(){
-    const c = document.createElement('canvas'); c.width=c.height=128;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(64,64,0, 64,64,64);
-    g.addColorStop(0.0,'rgba(255,255,255,1)');
-    g.addColorStop(0.2,'rgba(255,255,255,0.85)');
-    g.addColorStop(0.5,'rgba(255,255,255,0.22)');
-    g.addColorStop(1.0,'rgba(255,255,255,0)');
-    ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
-    return new THREE.CanvasTexture(c);
-  }
-  const glowTex = makeGlowTexture();
-
-  /* ---- procedural mottled star surface (granulation) ---- */
-  function makeSunTexture(){
-    const s = 512;
-    const c = document.createElement('canvas'); c.width=c.height=s;
-    const ctx = c.getContext('2d');
-    // deep warm base
-    ctx.fillStyle = '#b7541a';
-    ctx.fillRect(0,0,s,s);
-    // granulation: many soft warm blobs, some darker mottle
-    for(let i=0;i<1500;i++){
-      const x = Math.random()*s, y = Math.random()*s;
-      const r = 6 + Math.random()*26;
-      const g = ctx.createRadialGradient(x,y,0, x,y,r);
-      if(Math.random() > 0.5){
-        const gg = 190 + (Math.random()*50|0), bb = 110 + (Math.random()*70|0);
-        g.addColorStop(0, 'rgba(255,'+gg+','+bb+',0.5)');
-        g.addColorStop(1, 'rgba(255,180,90,0)');
-      } else {
-        const rr = 140 + (Math.random()*40|0);
-        g.addColorStop(0, 'rgba('+rr+',55,10,0.42)');
-        g.addColorStop(1, 'rgba(120,40,0,0)');
-      }
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-    }
-    // a few brighter hot spots
-    for(let i=0;i<70;i++){
-      const x=Math.random()*s, y=Math.random()*s, r=10+Math.random()*30;
-      const g = ctx.createRadialGradient(x,y,0, x,y,r);
-      g.addColorStop(0,'rgba(255,242,205,0.6)');
-      g.addColorStop(1,'rgba(255,220,150,0)');
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    return tex;
-  }
-
-  /* ---- soft elliptical smudge for the far-away galaxy we came from ---- */
-  function makeSmudgeTexture(){
-    const s=256; const c=document.createElement('canvas'); c.width=c.height=s;
-    const ctx=c.getContext('2d');
-    const g=ctx.createRadialGradient(128,128,0, 128,128,128);
-    g.addColorStop(0.00,'rgba(255,248,235,0.9)');
-    g.addColorStop(0.25,'rgba(210,200,180,0.35)');
-    g.addColorStop(0.60,'rgba(120,170,175,0.12)');
-    g.addColorStop(1.00,'rgba(0,0,0,0)');
-    ctx.fillStyle=g; ctx.fillRect(0,0,s,s);
-    return new THREE.CanvasTexture(c);
-  }
-
-  /* ---- faint background starfield ---- */
-  const BG = 1200;
-  const bgPos = new Float32Array(BG*3);
-  for(let i=0;i<BG;i++){
-    bgPos[i*3+0] = (Math.random()-0.5)*5000;
-    bgPos[i*3+1] = (Math.random()-0.5)*5000;
-    bgPos[i*3+2] = -3800 + Math.random()*4200;
-  }
-  const bgGeo = new THREE.BufferGeometry();
-  bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos,3));
-  const bgMat = new THREE.PointsMaterial({
-    size:5, map:glowTex, color:0xf3e6cf, transparent:true, opacity:0,
-    depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true,
-  });
-  const bgStars = new THREE.Points(bgGeo, bgMat);
-  scene.add(bgStars);
-
-  /* ---- the galaxy we left, tiny and far behind (continuity callback) ---- */
-  const smudgeMat = new THREE.SpriteMaterial({
-    map:makeSmudgeTexture(), color:0xbfae93, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false,
-  });
-  smudgeMat.rotation = 0.5;
-  const smudge = new THREE.Sprite(smudgeMat);
-  smudge.position.set(-900, 420, -3400);
-  smudge.scale.set(760, 300, 1);          // inclined-disk look
-  scene.add(smudge);
-
-  /* ================================================================
-     THE SUN — textured sphere (self-lit) + a subtle boiling shell,
-     wrapped in a warm corona halo.
-  ================================================================ */
-  const SUNR = 120;
-  const sunGroup = new THREE.Group();
-  scene.add(sunGroup);
-
-  const sunTex = makeSunTexture();
-  const sunMat = new THREE.MeshBasicMaterial({ map:sunTex, transparent:true, opacity:0 });
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(SUNR, 64, 48), sunMat);
-  sun.rotation.z = 0.22;                    // slight axial tilt
-  sunGroup.add(sun);
-
-  // a second, slightly larger translucent shell drifting the other way -> "boiling"
-  const shellTex = makeSunTexture();
-  const shellMat = new THREE.MeshBasicMaterial({
-    map:shellTex, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false,
-  });
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(SUNR*1.015, 64, 48), shellMat);
-  shell.rotation.z = 0.22;
-  sunGroup.add(shell);
-
-  // corona — inner tight amber + outer wide deep-orange (both billboard sprites)
-  const coronaInMat = new THREE.SpriteMaterial({
-    map:glowTex, color:0xffc27a, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false,
-  });
-  const coronaIn = new THREE.Sprite(coronaInMat);
-  coronaIn.scale.set(SUNR*3.6, SUNR*3.6, 1);
-  sunGroup.add(coronaIn);
-
-  const coronaOutMat = new THREE.SpriteMaterial({
-    map:glowTex, color:0xd8752a, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false,
-  });
-  const coronaOut = new THREE.Sprite(coronaOutMat);
-  coronaOut.scale.set(SUNR*8.2, SUNR*8.2, 1);
-  sunGroup.add(coronaOut);
-
-  /* ================================================================
-     THE SYSTEM — planets orbiting the sun (tilted plane for depth).
-     One is HER planet: teal, glowing, hover-labelled & clickable.
-  ================================================================ */
-  const system = new THREE.Group();
-  system.rotation.x = 0.42;
-  scene.add(system);
-  scene.add(new THREE.PointLight(0xffd8a0, 2.2, 5000));   // sunlight at origin
-  scene.add(new THREE.AmbientLight(0x20160c, 1.0));       // faint fill so night sides aren't pure black
-
-  function ringAt(r){
-    const seg = 96, arr = new Float32Array((seg+1)*3);
-    for(let i=0;i<=seg;i++){ const a=i/seg*Math.PI*2; arr[i*3]=Math.cos(a)*r; arr[i*3+1]=Math.sin(a)*r; }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr,3));
-    const m = new THREE.LineBasicMaterial({ color:0x6b5a44, transparent:true, opacity:0 });
-    system.add(new THREE.LineLoop(g, m)); return m;
-  }
-  const PLANETS = [
-    { r:200, size:12, color:0xb08d63, speed:0.35, mine:false },
-    { r:300, size:22, color:0x3fa9a0, speed:0.24, mine:true  },  // MY PLANET
-    { r:410, size:16, color:0xc27a4a, speed:0.17, mine:false },
-    { r:520, size:10, color:0x9fb6c9, speed:0.12, mine:false },
-    { r:640, size:26, color:0xd8b48a, speed:0.08, mine:false },
-  ];
-  const planets = [];
-  let myPlanet = null, myScale = 1;
-  for(const d of PLANETS){
-    const ringMat = ringAt(d.r);
-    const mat = new THREE.MeshStandardMaterial({
-      color:d.color, roughness:0.92, metalness:0.05, transparent:true, opacity:0,
-      emissive: d.mine ? 0x0e3c39 : 0x000000, emissiveIntensity: d.mine ? 0.6 : 0,
-    });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(d.size, 32, 24), mat);
-    mesh.userData = { r:d.r, speed:d.speed, angle:Math.random()*Math.PI*2, size:d.size };
-    system.add(mesh);
-    planets.push({ mesh, mat, ringMat });
-    if(d.mine) myPlanet = mesh;
-  }
-  // teal halo that lights up when her planet is hovered/selected
-  const haloMat = new THREE.SpriteMaterial({ map:glowTex, color:0x6fe0d6, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
-  const halo = new THREE.Sprite(haloMat); system.add(halo);
-
-  // raycast for hover / click on her planet
-  const ray = new THREE.Raycaster(), _wp = new THREE.Vector3(), label = document.getElementById('planet-label');
-  let hover = false, selected = false, arrivalStarted = false, arrivalTime = 0;
-  const arrivalOrigin = new THREE.Vector3(), arrivalTarget = new THREE.Vector3(), arrivalDir = new THREE.Vector3();
-  addEventListener('pointermove', e=>{
-    ray.setFromCamera({ x:(e.clientX/innerWidth)*2-1, y:-(e.clientY/innerHeight)*2+1 }, camera);
-    hover = !!myPlanet && ray.intersectObject(myPlanet).length > 0;
-    document.body.style.cursor = hover ? 'pointer' : 'default';
-  });
-  addEventListener('click', ()=>{
-    if(!hover || arrivalStarted) return;
-    selected = true; arrivalStarted = true; arrivalTime = clock.getElapsedTime();
-    myPlanet.getWorldPosition(arrivalTarget);
-    arrivalOrigin.copy(camera.position);
-    arrivalDir.copy(arrivalOrigin).sub(arrivalTarget).normalize();
-    document.body.style.cursor = 'default';
-    document.getElementById('overlay').style.opacity = 0;
-    label.style.opacity = 0;
-    // Reveal the detailed world only when we commit to the journey.
-    myPlanet.geometry.dispose();
-    myPlanet.geometry = new THREE.SphereGeometry(myPlanet.userData.size, 128, 96);
-    myPlanet.material.map = detailedWorld;
-    myPlanet.material.bumpMap = detailedWorld;
-    myPlanet.material.bumpScale = 0.72;
-    myPlanet.material.roughness = 0.82;
-    myPlanet.material.needsUpdate = true;
-    myPlanet.add(arrivalClouds);
-  });
-
-  /* ================================================================
-     UPGRADES — depth wash, sun prominences, planet atmospheres,
-     and a living surface for HER planet.
-  ================================================================ */
-  const washes = [];
-  function wash(color,x,y,z,sx,sy,op){
-    const m = new THREE.SpriteMaterial({ map:glowTex, color, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
-    const s = new THREE.Sprite(m); s.position.set(x,y,z); s.scale.set(sx,sy,1); scene.add(s);
-    washes.push({ m, op });
-  }
-  wash(0x6a2f12, -650,-220,-2000, 3400,2500, 0.16);   // amber cloud
-  wash(0x123f3b,  720, 320,-2250, 3000,2300, 0.12);   // teal cloud
-
-  // sun prominences — glowing tongues flickering at the limb
-  const proms = [];
-  for(let i=0;i<8;i++){
-    const a = Math.random()*Math.PI*2;
-    const m = new THREE.SpriteMaterial({ map:glowTex, color:0xff8a3c, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
-    m.rotation = a;
-    const s = new THREE.Sprite(m);
-    s.position.set(Math.cos(a)*SUNR*0.98, Math.sin(a)*SUNR*0.98, 6);
-    const h = 45 + Math.random()*80;
-    s.scale.set(h*0.5, h, 1);
-    sunGroup.add(s);
-    proms.push({ s, m, base:h, ph:Math.random()*Math.PI*2 });
-  }
-
-  // soft atmosphere glow behind each planet (teal + brighter for hers)
-  for(const pl of planets){
-    const mine = pl.mesh === myPlanet;
-    const m = new THREE.SpriteMaterial({ map:glowTex, color: mine ? 0x5fe6da : pl.mesh.material.color.getHex(), transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
-    pl.atmo = new THREE.Sprite(m); pl.atmoMat = m;
-    pl.atmoK = (mine ? 4.4 : 2.9) * pl.mesh.userData.size;
-    system.add(pl.atmo);
-  }
-
-  // her planet gets a living teal world surface (sea + land + clouds)
-  (function(){
-    const s=256, c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
-    x.fillStyle='#1d726a'; x.fillRect(0,0,s,s);
-    for(let i=0;i<44;i++){ const px=Math.random()*s,py=Math.random()*s,r=8+Math.random()*28;
-      x.fillStyle='rgba(28,92,72,'+(0.4+Math.random()*0.4)+')'; x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill(); }
-    for(let i=0;i<26;i++){ const px=Math.random()*s,py=Math.random()*s,r=4+Math.random()*11;
-      x.fillStyle='rgba(214,230,225,0.5)'; x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill(); }
-    myPlanet.material.map = new THREE.CanvasTexture(c); myPlanet.material.needsUpdate = true;
-  })();
-
-  // High-detail terrain appears during the approach: oceans, ice, relief and the faint archaeological geometry live in one optimized texture.
-  const detailedWorld = new THREE.TextureLoader().load('assets/planet/unknown-albedo.png');
-  detailedWorld.encoding = THREE.sRGBEncoding;
-  detailedWorld.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  function makeArrivalCloudTexture(){
-    const s=768,c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
-    for(let i=0;i<170;i++){ const px=Math.random()*s,py=Math.random()*s,r=16+Math.random()*52,a=.10+Math.random()*.22;
-      const g=x.createRadialGradient(px,py,0,px,py,r); g.addColorStop(0,`rgba(255,255,255,${a})`); g.addColorStop(.52,`rgba(231,247,247,${a*.52})`); g.addColorStop(1,'rgba(230,246,246,0)');
-      x.fillStyle=g; x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill(); }
-    const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; return t;
-  }
-  const arrivalCloudMat = new THREE.MeshPhongMaterial({ map:makeArrivalCloudTexture(), transparent:true, opacity:0, depthWrite:false, shininess:3 });
-  const arrivalClouds = new THREE.Mesh(new THREE.SphereGeometry(PLANETS[1].size*1.026,96,72), arrivalCloudMat);
-
-  /* ---- scroll -> progress ---- */
-  let targetProgress = 0, progress = 0;
-  function computeScroll(){
-    const max = document.body.scrollHeight - innerHeight;
-    targetProgress = max>0 ? (scrollY/max) : 0;
-  }
-  addEventListener('scroll', computeScroll, { passive:true });
-  computeScroll();
-
-  /* ---- mouse parallax ---- */
-  let mx=0, my=0, lookX=0, lookY=0;
-  addEventListener('mousemove', e=>{
-    mx = e.clientX/innerWidth - 0.5;
-    my = e.clientY/innerHeight - 0.5;
-  });
-
-  const clock = new THREE.Clock();
-
-  function animate(){
-    requestAnimationFrame(animate);
-    const t = clock.getElapsedTime();
-    progress += (targetProgress - progress) * 0.06;
-    const p = progress;
-
-    // Until selection this is the original system camera. After selection it becomes a single, continuous arrival vector.
-    let arrival = 0;
-    if(!arrivalStarted){
-      const camZ = 900 - p*640;                // 900 -> 260
-      camera.position.set(0, 0, camZ);
-      const targetLookX = mx*30, targetLookY = -my*30;
-      lookX += (targetLookX - lookX)*0.05;
-      lookY += (targetLookY - lookY)*0.05;
-      camera.lookAt(lookX, lookY, 0);
-    } else {
-      // A long easing curve gives the approach a perceptible acceleration instead of a click-cut.
-      arrival = MU.clamp((t-arrivalTime)/12.5,0,1);
-      const velocity = Math.pow(arrival, 2.35);
-      const startDistance = arrivalOrigin.distanceTo(arrivalTarget);
-      const distance = MU.lerp(startDistance, 2.6, velocity);
-      camera.position.copy(arrivalTarget).addScaledVector(arrivalDir, distance);
-      camera.lookAt(arrivalTarget);
-      // Orbiting ceases at the exact moment the route is locked; the world now feels monumental and still.
-      document.getElementById('cloud-veil').style.opacity = MU.smoothstep(arrival,0.57,0.78) * 0.96;
-      const banks = document.querySelectorAll('.cloud-bank');
-      banks[0].style.opacity = MU.smoothstep(arrival,0.54,0.79);
-      banks[1].style.opacity = MU.smoothstep(arrival,0.65,0.91);
-      banks[2].style.opacity = MU.smoothstep(arrival,0.73,1);
-    }
-
-    // living surface: slow spin + texture churn, shell drifts opposite
-    sun.rotation.y   += 0.0012;
-    shell.rotation.y -= 0.0007;
-    sunTex.offset.x   += 0.00035;
-    shellTex.offset.x -= 0.00022; shellTex.offset.y += 0.00009;
-
-    // gentle corona breathing
-    const pulse = 1 + 0.05*Math.sin(t*0.9);
-    coronaIn.scale.set(SUNR*3.6*pulse, SUNR*3.6*pulse, 1);
-    coronaOut.scale.set(SUNR*8.2*(2-pulse), SUNR*8.2*(2-pulse), 1);
-
-    // planets orbit + reveal (a touch after the star)
-    const sysFade = MU.clamp((p - 0.12)/0.22, 0, 1);
-    for(const pl of planets){
-      const u = pl.mesh.userData; if(!arrivalStarted) u.angle += u.speed*0.01;
-      pl.mesh.position.set(Math.cos(u.angle)*u.r, Math.sin(u.angle)*u.r, 0);
-      pl.mesh.rotation.y += 0.01;
-      const spaceRemain = arrivalStarted ? 1-MU.smoothstep(arrival,0.06,0.31) : 1;
-      pl.mat.opacity = sysFade * (pl.mesh===myPlanet ? 1 : spaceRemain);
-      pl.ringMat.opacity = sysFade*0.22*spaceRemain;
-    }
-    // her planet: ease scale + halo + floating label
-    if(myPlanet){
-      const want = (hover||selected) ? 1.4 : 1;
-      myScale += (want - myScale)*0.12; myPlanet.scale.setScalar(myScale);
-      halo.position.copy(myPlanet.position);
-      const hs = myPlanet.userData.size*5.5; halo.scale.set(hs, hs, 1);
-      const beckon = (0.14 + 0.07*Math.sin(t*2.2)) * sysFade;   // always faintly glows to invite the click
-      const wantHalo = arrivalStarted ? 0 : ((hover||selected) ? 0.85*sysFade : beckon);
-      haloMat.opacity += (wantHalo - haloMat.opacity)*0.15;
-      myPlanet.getWorldPosition(_wp); _wp.project(camera);
-      if(!arrivalStarted && sysFade>0.2 && _wp.z<1){
-        label.style.left = ((_wp.x*0.5+0.5)*innerWidth)+'px';
-        label.style.top  = ((-_wp.y*0.5+0.5)*innerHeight)+'px';
-        label.style.opacity = (hover||selected) ? 1 : 0;
-      } else label.style.opacity = 0;
-    }
-
-    // fade everything up from black like the galaxy did
-    const fade = MU.clamp((p - 0.03)/0.18, 0, 1);
-    const spaceFade = arrivalStarted ? 1-MU.smoothstep(arrival,0.06,0.31) : 1;
-    sunMat.opacity      = fade * spaceFade;
-    shellMat.opacity    = fade * 0.4 * spaceFade;
-    coronaInMat.opacity = fade * (0.55 + 0.08*Math.sin(t*0.9)) * spaceFade;
-    coronaOutMat.opacity= fade * (0.38 + 0.06*Math.sin(t*0.6)) * spaceFade;
-    bgMat.opacity       = fade * 0.4 * (arrivalStarted ? 1-MU.smoothstep(arrival,.36,.68) : 1);
-    smudgeMat.opacity   = fade * 0.14 * spaceFade;
-
-    // upgrades: wash fade, prominence flicker, atmosphere follow
-    for(const w of washes) w.m.opacity = fade*w.op*spaceFade;
-    for(const pr of proms){
-      const fl = 0.5 + 0.5*Math.sin(t*3 + pr.ph);
-      pr.m.opacity = fade*(0.3 + 0.45*fl)*spaceFade;
-      pr.s.scale.set(pr.base*0.5, pr.base*(0.8 + 0.55*fl), 1);
-    }
-    for(const pl of planets){
-      pl.atmo.position.copy(pl.mesh.position);
-      pl.atmo.scale.set(pl.atmoK, pl.atmoK, 1);
-      const mine = pl.mesh === myPlanet;
-      pl.atmoMat.opacity = sysFade*(mine ? (arrivalStarted ? (0.18 + MU.smoothstep(arrival,.18,.56)*0.72) : (0.45 + ((hover||selected)?0.3:0))) : 0.24*spaceFade);
-    }
-    if(arrivalStarted){
-      // Separate cloud shell creeps across the world first; the nearby volume then takes over the frame.
-      arrivalCloudMat.opacity = MU.smoothstep(arrival,.25,.65)*.76;
-      arrivalClouds.rotation.y += .00065;
-    }
-
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  addEventListener('resize', ()=>{
-    camera.aspect = innerWidth/innerHeight;
-    camera.updateProjectionMatrix();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
-  });
+    sceneEl.appendChild(renderer.domElement);
+
+    function makeGlowTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0.0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.2, 'rgba(255,255,255,0.85)');
+      g.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+      g.addColorStop(1.0, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    }
+    const glowTex = makeGlowTexture();
+
+    function makeSunTexture() {
+      const s = 512;
+      const c = document.createElement('canvas'); c.width = c.height = s;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#b7541a';
+      ctx.fillRect(0, 0, s, s);
+      for (let i = 0; i < 1500; i++) {
+        const x = Math.random() * s, y = Math.random() * s;
+        const r = 6 + Math.random() * 26;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        if (Math.random() > 0.5) {
+          const gg = 190 + (Math.random() * 50 | 0), bb = 110 + (Math.random() * 70 | 0);
+          g.addColorStop(0, 'rgba(255,' + gg + ',' + bb + ',0.5)');
+          g.addColorStop(1, 'rgba(255,180,90,0)');
+        } else {
+          const rr = 140 + (Math.random() * 40 | 0);
+          g.addColorStop(0, 'rgba(' + rr + ',55,10,0.42)');
+          g.addColorStop(1, 'rgba(120,40,0,0)');
+        }
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      for (let i = 0; i < 70; i++) {
+        const x = Math.random() * s, y = Math.random() * s, r = 10 + Math.random() * 30;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, 'rgba(255,242,205,0.6)');
+        g.addColorStop(1, 'rgba(255,220,150,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function makeSmudgeTexture() {
+      const s = 256; const c = document.createElement('canvas'); c.width = c.height = s;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+      g.addColorStop(0.00, 'rgba(255,248,235,0.9)');
+      g.addColorStop(0.25, 'rgba(210,200,180,0.35)');
+      g.addColorStop(0.60, 'rgba(120,170,175,0.12)');
+      g.addColorStop(1.00, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+      return new THREE.CanvasTexture(c);
+    }
+
+    /* ================================================================
+       REAL PLANET SURFACE — procedural, generated at runtime (no external
+       asset). Two canvases: an albedo (oceans, continents, ice caps,
+       faint ruin-grid glyphs) and a matching grayscale bump/height map
+       so the terrain actually catches light instead of looking flat.
+    ================================================================ */
+    function makePlanetSurface() {
+      const s = 1024;
+
+      // --- height field first (drives both bump + landmass shape) ---
+      const hCanvas = document.createElement('canvas'); hCanvas.width = hCanvas.height = s;
+      const hx = hCanvas.getContext('2d');
+      hx.fillStyle = '#202020'; hx.fillRect(0, 0, s, s);  // base = ocean floor (dark)
+      // layered blobs build up continents with soft coastlines
+      const blobLayers = [
+        { n: 9, rMin: 140, rMax: 260, alpha: 0.5 },
+        { n: 22, rMin: 60, rMax: 140, alpha: 0.35 },
+        { n: 60, rMin: 18, rMax: 55, alpha: 0.22 },
+      ];
+      const continentSeeds = [];
+      for (const layer of blobLayers) {
+        for (let i = 0; i < layer.n; i++) {
+          let x, y;
+          if (layer.rMin > 100) {
+            x = Math.random() * s; y = Math.random() * s;
+            continentSeeds.push([x, y]);
+          } else {
+            const seed = continentSeeds[(Math.random() * continentSeeds.length) | 0] || [s / 2, s / 2];
+            x = seed[0] + (Math.random() - 0.5) * 260;
+            y = seed[1] + (Math.random() - 0.5) * 260;
+          }
+          const r = layer.rMin + Math.random() * (layer.rMax - layer.rMin);
+          const g = hx.createRadialGradient(x, y, 0, x, y, r);
+          g.addColorStop(0, `rgba(255,255,255,${layer.alpha})`);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          hx.fillStyle = g; hx.beginPath(); hx.arc(x, y, r, 0, Math.PI * 2); hx.fill();
+        }
+      }
+      // polar ice caps raise the height at top/bottom bands
+      let capGrad = hx.createLinearGradient(0, 0, 0, 120);
+      capGrad.addColorStop(0, 'rgba(255,255,255,0.9)'); capGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      hx.fillStyle = capGrad; hx.fillRect(0, 0, s, 120);
+      capGrad = hx.createLinearGradient(0, s - 120, 0, s);
+      capGrad.addColorStop(0, 'rgba(255,255,255,0)'); capGrad.addColorStop(1, 'rgba(255,255,255,0.9)');
+      hx.fillStyle = capGrad; hx.fillRect(0, s - 120, s, 120);
+
+      const heightData = hx.getImageData(0, 0, s, s).data;
+      function heightAt(px, py) {
+        px = ((px % s) + s) % s; py = Math.max(0, Math.min(s - 1, py));
+        return heightData[(py * s + px) * 4] / 255;
+      }
+
+      // --- albedo (color) canvas, painted using the height field above ---
+      const aCanvas = document.createElement('canvas'); aCanvas.width = aCanvas.height = s;
+      const ax = aCanvas.getContext('2d');
+      const img = ax.createImageData(s, s);
+      for (let py = 0; py < s; py++) {
+        for (let px = 0; px < s; px++) {
+          const h = heightAt(px, py);
+          let r, g, b;
+          if (h < 0.30) {                     // deep ocean
+            r = 10 + h * 30; g = 48 + h * 70; b = 64 + h * 90;
+          } else if (h < 0.40) {               // shallow water / coast
+            const t = (h - 0.30) / 0.10; r = 10 + t * 40; g = 118 + t * 20; b = 140 + t * 10;
+          } else if (h < 0.80) {               // landmass (mossy teal-green, matches art direction)
+            const t = (h - 0.40) / 0.40;
+            r = 42 + t * 38; g = 92 + t * 46; b = 64 + t * 18;
+          } else {                            // high terrain / ice
+            const t = (h - 0.80) / 0.20;
+            r = 150 + t * 100; g = 190 + t * 60; b = 190 + t * 60;
+          }
+          const idx = (py * s + px) * 4;
+          img.data[idx] = r; img.data[idx + 1] = g; img.data[idx + 2] = b; img.data[idx + 3] = 255;
+        }
+      }
+      ax.putImageData(img, 0, 0);
+
+      // faint ancient-ruin glyph grid scattered on landmasses — subtle, not readable text,
+      // just geometric traces (callback to the "archaeological" world theme)
+      ax.strokeStyle = 'rgba(232,176,107,0.35)';
+      ax.lineWidth = 1;
+      for (let i = 0; i < 26; i++) {
+        const cx = Math.random() * s, cy = Math.random() * s;
+        if (heightAt(cx | 0, cy | 0) < 0.42) continue;   // only place on land
+        const size = 10 + Math.random() * 22;
+        ax.save();
+        ax.translate(cx, cy);
+        ax.rotate(Math.random() * Math.PI * 2);
+        ax.strokeRect(-size / 2, -size / 2, size, size);
+        ax.beginPath(); ax.moveTo(-size / 2, 0); ax.lineTo(size / 2, 0);
+        ax.moveTo(0, -size / 2); ax.lineTo(0, size / 2); ax.stroke();
+        ax.restore();
+      }
+
+      const albedo = new THREE.CanvasTexture(aCanvas);
+      albedo.wrapS = albedo.wrapT = THREE.RepeatWrapping;
+      if (THREE.sRGBEncoding) albedo.encoding = THREE.sRGBEncoding;
+
+      const bump = new THREE.CanvasTexture(hCanvas);
+      bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+
+      return { albedo, bump };
+    }
+
+    function makeArrivalCloudTexture() {
+      const s = 768, c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d');
+      for (let i = 0; i < 170; i++) {
+        const px = Math.random() * s, py = Math.random() * s, r = 16 + Math.random() * 52, a = .10 + Math.random() * .22;
+        const g = x.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.52, `rgba(231,247,247,${a * .52})`); g.addColorStop(1, 'rgba(230,246,246,0)');
+        x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      }
+      const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; return t;
+    }
+
+    const BG = 1200;
+    const bgPos = new Float32Array(BG * 3);
+    for (let i = 0; i < BG; i++) {
+      bgPos[i * 3 + 0] = (Math.random() - 0.5) * 5000;
+      bgPos[i * 3 + 1] = (Math.random() - 0.5) * 5000;
+      bgPos[i * 3 + 2] = -3800 + Math.random() * 4200;
+    }
+    const bgGeo = new THREE.BufferGeometry();
+    bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
+    const bgMat = new THREE.PointsMaterial({
+      size: 5, map: glowTex, color: 0xf3e6cf, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
+    });
+    const bgStars = new THREE.Points(bgGeo, bgMat);
+    scene.add(bgStars);
+
+    const smudgeMat = new THREE.SpriteMaterial({
+      map: makeSmudgeTexture(), color: 0xbfae93, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    smudgeMat.rotation = 0.5;
+    const smudge = new THREE.Sprite(smudgeMat);
+    smudge.position.set(-900, 420, -3400);
+    smudge.scale.set(760, 300, 1);
+    scene.add(smudge);
+
+    const SUNR = 120;
+    const sunGroup = new THREE.Group();
+    scene.add(sunGroup);
+
+    const sunTex = makeSunTexture();
+    const sunMat = new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, opacity: 0 });
+    const sun = new THREE.Mesh(new THREE.SphereGeometry(SUNR, 64, 48), sunMat);
+    sun.rotation.z = 0.22;
+    sunGroup.add(sun);
+
+    const shellTex = makeSunTexture();
+    const shellMat = new THREE.MeshBasicMaterial({
+      map: shellTex, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(SUNR * 1.015, 64, 48), shellMat);
+    shell.rotation.z = 0.22;
+    sunGroup.add(shell);
+
+    const coronaInMat = new THREE.SpriteMaterial({
+      map: glowTex, color: 0xffc27a, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const coronaIn = new THREE.Sprite(coronaInMat);
+    coronaIn.scale.set(SUNR * 3.6, SUNR * 3.6, 1);
+    sunGroup.add(coronaIn);
+
+    const coronaOutMat = new THREE.SpriteMaterial({
+      map: glowTex, color: 0xd8752a, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const coronaOut = new THREE.Sprite(coronaOutMat);
+    coronaOut.scale.set(SUNR * 8.2, SUNR * 8.2, 1);
+    sunGroup.add(coronaOut);
+
+    const system = new THREE.Group();
+    system.rotation.x = 0.42;
+    scene.add(system);
+    scene.add(new THREE.PointLight(0xffd8a0, 2.2, 5000));
+    scene.add(new THREE.AmbientLight(0x20160c, 1.0));
+
+    function ringAt(r) {
+      const seg = 96, arr = new Float32Array((seg + 1) * 3);
+      for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; arr[i * 3] = Math.cos(a) * r; arr[i * 3 + 1] = Math.sin(a) * r; }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      const m = new THREE.LineBasicMaterial({ color: 0x6b5a44, transparent: true, opacity: 0 });
+      system.add(new THREE.LineLoop(g, m)); return m;
+    }
+    const PLANETS = [
+      { r: 200, size: 12, color: 0xb08d63, speed: 0.35, mine: false },
+      { r: 300, size: 22, color: 0x3fa9a0, speed: 0.24, mine: true },
+      { r: 410, size: 16, color: 0xc27a4a, speed: 0.17, mine: false },
+      { r: 520, size: 10, color: 0x9fb6c9, speed: 0.12, mine: false },
+      { r: 640, size: 26, color: 0xd8b48a, speed: 0.08, mine: false },
+    ];
+    const planets = [];
+    let myPlanet = null, myScale = 1;
+    for (const d of PLANETS) {
+      const ringMat = ringAt(d.r);
+      const mat = new THREE.MeshStandardMaterial({
+        color: d.color, roughness: 0.92, metalness: 0.05, transparent: true, opacity: 0,
+        emissive: d.mine ? 0x0e3c39 : 0x000000, emissiveIntensity: d.mine ? 0.6 : 0,
+      });
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(d.size, 32, 24), mat);
+      mesh.userData = { r: d.r, speed: d.speed, angle: Math.random() * Math.PI * 2, size: d.size };
+      system.add(mesh);
+      planets.push({ mesh, mat, ringMat });
+      if (d.mine) myPlanet = mesh;
+    }
+    const haloMat = new THREE.SpriteMaterial({ map: glowTex, color: 0x6fe0d6, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const halo = new THREE.Sprite(haloMat); system.add(halo);
+
+    const ray = new THREE.Raycaster(), _wp = new THREE.Vector3(), label = document.getElementById('planet-label');
+    let hover = false, selected = false, arrivalStarted = false, arrivalTime = 0;
+    const arrivalOrigin = new THREE.Vector3(), arrivalTarget = new THREE.Vector3(), arrivalDir = new THREE.Vector3();
+
+    // arrival clouds mesh — created up front (no async texture, safe to build immediately)
+    const arrivalCloudMat = new THREE.MeshPhongMaterial({ map: makeArrivalCloudTexture(), transparent: true, opacity: 0, depthWrite: false, shininess: 3 });
+    const arrivalClouds = new THREE.Mesh(new THREE.SphereGeometry(PLANETS[1].size * 1.026, 96, 72), arrivalCloudMat);
+
+    addEventListener('pointermove', e => {
+      ray.setFromCamera({ x: (e.clientX / innerWidth) * 2 - 1, y: -(e.clientY / innerHeight) * 2 + 1 }, camera);
+      hover = !!myPlanet && !arrivalStarted && ray.intersectObject(myPlanet).length > 0;
+      document.body.style.cursor = hover ? 'pointer' : 'default';
+    });
+    addEventListener('click', () => {
+      if (!hover || arrivalStarted) return;
+      selected = true; arrivalStarted = true; arrivalTime = clock.getElapsedTime();
+      myPlanet.getWorldPosition(arrivalTarget);
+      arrivalOrigin.copy(camera.position);
+      arrivalDir.copy(arrivalOrigin).sub(arrivalTarget).normalize();
+      document.body.style.cursor = 'default';
+      document.getElementById('overlay').style.opacity = 0;
+      label.style.opacity = 0;
+
+      // Real, synchronous procedural surface — no external file, no loading gap.
+      const { albedo, bump } = makePlanetSurface();
+      myPlanet.geometry.dispose();
+      myPlanet.geometry = new THREE.SphereGeometry(myPlanet.userData.size, 128, 96);
+      myPlanet.material.map = albedo;
+      myPlanet.material.bumpMap = bump;
+      myPlanet.material.bumpScale = 0.9;
+      myPlanet.material.roughness = 0.85;
+      myPlanet.material.emissiveIntensity = 0.15;   // dial back the flat teal glow now that it's textured
+      myPlanet.material.needsUpdate = true;
+      myPlanet.add(arrivalClouds);
+    });
+
+    const washes = [];
+    function wash(color, x, y, z, sx, sy, op) {
+      const m = new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+      const s = new THREE.Sprite(m); s.position.set(x, y, z); s.scale.set(sx, sy, 1); scene.add(s);
+      washes.push({ m, op });
+    }
+    wash(0x6a2f12, -650, -220, -2000, 3400, 2500, 0.16);
+    wash(0x123f3b, 720, 320, -2250, 3000, 2300, 0.12);
+
+    const proms = [];
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const m = new THREE.SpriteMaterial({ map: glowTex, color: 0xff8a3c, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+      m.rotation = a;
+      const s = new THREE.Sprite(m);
+      s.position.set(Math.cos(a) * SUNR * 0.98, Math.sin(a) * SUNR * 0.98, 6);
+      const h = 45 + Math.random() * 80;
+      s.scale.set(h * 0.5, h, 1);
+      sunGroup.add(s);
+      proms.push({ s, m, base: h, ph: Math.random() * Math.PI * 2 });
+    }
+
+    for (const pl of planets) {
+      const mine = pl.mesh === myPlanet;
+      const m = new THREE.SpriteMaterial({ map: glowTex, color: mine ? 0x5fe6da : pl.mesh.material.color.getHex(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+      pl.atmo = new THREE.Sprite(m); pl.atmoMat = m;
+      pl.atmoK = (mine ? 4.4 : 2.9) * pl.mesh.userData.size;
+      system.add(pl.atmo);
+    }
+
+    // placeholder low-res surface visible before arrival (small, cheap, replaced on click)
+    (function () {
+      const s = 256, c = document.createElement('canvas'); c.width = c.height = s; const x = c.getContext('2d');
+      x.fillStyle = '#1d726a'; x.fillRect(0, 0, s, s);
+      for (let i = 0; i < 44; i++) {
+        const px = Math.random() * s, py = Math.random() * s, r = 8 + Math.random() * 28;
+        x.fillStyle = 'rgba(28,92,72,' + (0.4 + Math.random() * 0.4) + ')'; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      }
+      for (let i = 0; i < 26; i++) {
+        const px = Math.random() * s, py = Math.random() * s, r = 4 + Math.random() * 11;
+        x.fillStyle = 'rgba(214,230,225,0.5)'; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      }
+      myPlanet.material.map = new THREE.CanvasTexture(c); myPlanet.material.needsUpdate = true;
+    })();
+
+    let targetProgress = 0, progress = 0;
+    function computeScroll() {
+      const max = document.body.scrollHeight - innerHeight;
+      targetProgress = max > 0 ? (scrollY / max) : 0;
+    }
+    addEventListener('scroll', computeScroll, { passive: true });
+    computeScroll();
+
+    let mx = 0, my = 0, lookX = 0, lookY = 0;
+    addEventListener('mousemove', e => {
+      mx = e.clientX / innerWidth - 0.5;
+      my = e.clientY / innerHeight - 0.5;
+    });
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      progress += (targetProgress - progress) * 0.06;
+      const p = progress;
+
+      let arrival = 0;
+      if (!arrivalStarted) {
+        const camZ = 900 - p * 640;
+        camera.position.set(0, 0, camZ);
+        const targetLookX = mx * 30, targetLookY = -my * 30;
+        lookX += (targetLookX - lookX) * 0.05;
+        lookY += (targetLookY - lookY) * 0.05;
+        camera.lookAt(lookX, lookY, 0);
+      } else {
+        arrival = MU.clamp((t - arrivalTime) / 12.5, 0, 1);
+        const velocity = Math.pow(arrival, 2.35);
+        const startDistance = arrivalOrigin.distanceTo(arrivalTarget);
+        const distance = MU.lerp(startDistance, 2.6, velocity);
+        camera.position.copy(arrivalTarget).addScaledVector(arrivalDir, distance);
+        camera.lookAt(arrivalTarget);
+        document.getElementById('cloud-veil').style.opacity = MU.smoothstep(arrival, 0.57, 0.78) * 0.96;
+        const banks = document.querySelectorAll('.cloud-bank');
+        banks[0].style.opacity = MU.smoothstep(arrival, 0.54, 0.79);
+        banks[1].style.opacity = MU.smoothstep(arrival, 0.65, 0.91);
+        banks[2].style.opacity = MU.smoothstep(arrival, 0.73, 1);
+      }
+
+      sun.rotation.y += 0.0012;
+      shell.rotation.y -= 0.0007;
+      sunTex.offset.x += 0.00035;
+      shellTex.offset.x -= 0.00022; shellTex.offset.y += 0.00009;
+
+      const pulse = 1 + 0.05 * Math.sin(t * 0.9);
+      coronaIn.scale.set(SUNR * 3.6 * pulse, SUNR * 3.6 * pulse, 1);
+      coronaOut.scale.set(SUNR * 8.2 * (2 - pulse), SUNR * 8.2 * (2 - pulse), 1);
+
+      const sysFade = MU.clamp((p - 0.12) / 0.22, 0, 1);
+      for (const pl of planets) {
+        const u = pl.mesh.userData; if (!arrivalStarted) u.angle += u.speed * 0.01;
+        pl.mesh.position.set(Math.cos(u.angle) * u.r, Math.sin(u.angle) * u.r, 0);
+        pl.mesh.rotation.y += 0.01;
+        const spaceRemain = arrivalStarted ? 1 - MU.smoothstep(arrival, 0.06, 0.31) : 1;
+        pl.mat.opacity = sysFade * (pl.mesh === myPlanet ? 1 : spaceRemain);
+        pl.ringMat.opacity = sysFade * 0.22 * spaceRemain;
+      }
+      if (myPlanet) {
+        const want = (hover || selected) ? 1.4 : 1;
+        myScale += (want - myScale) * 0.12; myPlanet.scale.setScalar(myScale);
+        halo.position.copy(myPlanet.position);
+        const hs = myPlanet.userData.size * 5.5; halo.scale.set(hs, hs, 1);
+        const beckon = (0.14 + 0.07 * Math.sin(t * 2.2)) * sysFade;
+        const wantHalo = arrivalStarted ? 0 : ((hover || selected) ? 0.85 * sysFade : beckon);
+        haloMat.opacity += (wantHalo - haloMat.opacity) * 0.15;
+        myPlanet.getWorldPosition(_wp); _wp.project(camera);
+        if (!arrivalStarted && sysFade > 0.2 && _wp.z < 1) {
+          label.style.left = ((_wp.x * 0.5 + 0.5) * innerWidth) + 'px';
+          label.style.top = ((-_wp.y * 0.5 + 0.5) * innerHeight) + 'px';
+          label.style.opacity = (hover || selected) ? 1 : 0;
+        } else label.style.opacity = 0;
+      }
+
+      const fade = MU.clamp((p - 0.03) / 0.18, 0, 1);
+      const spaceFade = arrivalStarted ? 1 - MU.smoothstep(arrival, 0.06, 0.31) : 1;
+      sunMat.opacity = fade * spaceFade;
+      shellMat.opacity = fade * 0.4 * spaceFade;
+      coronaInMat.opacity = fade * (0.55 + 0.08 * Math.sin(t * 0.9)) * spaceFade;
+      coronaOutMat.opacity = fade * (0.38 + 0.06 * Math.sin(t * 0.6)) * spaceFade;
+      bgMat.opacity = fade * 0.4 * (arrivalStarted ? 1 - MU.smoothstep(arrival, .36, .68) : 1);
+      smudgeMat.opacity = fade * 0.14 * spaceFade;
+
+      for (const w of washes) w.m.opacity = fade * w.op * spaceFade;
+      for (const pr of proms) {
+        const fl = 0.5 + 0.5 * Math.sin(t * 3 + pr.ph);
+        pr.m.opacity = fade * (0.3 + 0.45 * fl) * spaceFade;
+        pr.s.scale.set(pr.base * 0.5, pr.base * (0.8 + 0.55 * fl), 1);
+      }
+      for (const pl of planets) {
+        pl.atmo.position.copy(pl.mesh.position);
+        pl.atmo.scale.set(pl.atmoK, pl.atmoK, 1);
+        const mine = pl.mesh === myPlanet;
+        pl.atmoMat.opacity = sysFade * (mine ? (arrivalStarted ? (0.18 + MU.smoothstep(arrival, .18, .56) * 0.72) : (0.45 + ((hover || selected) ? 0.3 : 0))) : 0.24 * spaceFade);
+      }
+      if (arrivalStarted) {
+        arrivalCloudMat.opacity = MU.smoothstep(arrival, .25, .65) * .76;
+        arrivalClouds.rotation.y += .00065;
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
   </script>
 </body>
+
 </html>
