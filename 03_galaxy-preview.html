@@ -3,60 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Unknown — Galaxy Approach (preview)</title>
+<title>The Unknown — Galaxy</title>
 <style>
   :root{ --amber:#e8b06b; --teal:#3fa9a0; --black:#050403; }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{ background:var(--black); }
-  body{
-    background:var(--black); color:#fff;
-    font-family:'Courier New', monospace;
-    height:500vh; overflow-x:hidden;
-  }
+  body{ background:var(--black); color:#fff; font-family:'Courier New', monospace; height:500vh; overflow-x:hidden; }
   #scene{ position:fixed; inset:0; width:100%; height:100vh; z-index:1; background:var(--black); }
   #scene canvas{ display:block; }
   #overlay{ position:fixed; inset:0; z-index:2; pointer-events:none; }
-
-  #caption{
-    position:absolute; top:26px; left:50%; transform:translateX(-50%);
-    text-align:center; color:#8aa3a0; letter-spacing:4px;
-    font-size:0.72rem; text-transform:uppercase; width:100%; padding:0 20px;
-  }
   #scroll-hint{
     position:absolute; bottom:34px; left:50%; transform:translateX(-50%);
-    color:#8fdfd8;
-    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
+    color:#8fdfd8; font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
     letter-spacing:7px; font-size:0.8rem; text-transform:uppercase; text-align:center;
   }
   #scroll-hint .arrow{ display:block; margin-top:10px; font-size:1.05rem; animation:bob 1.9s ease-in-out infinite; }
   @keyframes bob{ 0%,100%{ transform:translateY(0); opacity:0.45; } 50%{ transform:translateY(9px); opacity:1; } }
-  #note{
-    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-    color:#4c5a59; font-size:0.62rem; letter-spacing:1px; text-align:center; width:100%;
-  }
+  #trans-fade{ position:fixed; inset:0; z-index:9999; background:#000; opacity:1; pointer-events:none; transition:opacity 1.2s ease; }
 </style>
 </head>
 <body>
 
   <div id="scene"></div>
   <div id="overlay">
-    <div id="caption">Approaching the galaxy &middot; alive &amp; painterly</div>
     <div id="scroll-hint">SCROLL<span class="arrow">&#8595;</span></div>
-    <div id="note">preview module &middot; just the galaxy &middot; pacing comes later</div>
   </div>
+  <div id="trans-fade"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-  /* ================================================================
-     THE UNKNOWN — galaxy approach PREVIEW (standalone module) v3
-     "Alive & painterly": v2 disk + (1) per-point twinkle shimmer as it
-     turns, (2) drifting amber/teal nebula clouds for color depth,
-     (3) bright icy-blue star-forming knots pulsing along the arms.
-     Same revolve + approach she loved, kept intact.
-  ================================================================ */
-
   if('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);
+
+  /* fade IN from black on arrival (this page was linked-to from spacecraft) */
+  requestAnimationFrame(()=>{ document.getElementById('trans-fade').style.opacity = '0'; });
 
   const MU = THREE.MathUtils;
   const sceneEl = document.getElementById('scene');
@@ -72,7 +52,6 @@
   renderer.setSize(innerWidth, innerHeight);
   sceneEl.appendChild(renderer.domElement);
 
-  /* ---- soft round sprite for glowing points ---- */
   function makeGlowTexture(){
     const c = document.createElement('canvas'); c.width=c.height=64;
     const ctx = c.getContext('2d');
@@ -86,14 +65,13 @@
   }
   const glowTex = makeGlowTexture();
 
-  /* ---- broad soft texture for the disk-body haze ---- */
   function makeDiskTexture(){
     const c = document.createElement('canvas'); c.width=c.height=256;
     const ctx = c.getContext('2d');
     const g = ctx.createRadialGradient(128,128,0, 128,128,128);
     g.addColorStop(0.00,'rgba(255,246,230,0.95)');
     g.addColorStop(0.22,'rgba(255,226,180,0.45)');
-    g.addColorStop(0.55,'rgba(120,205,198,0.20)');   // teal-ish mid body
+    g.addColorStop(0.55,'rgba(120,205,198,0.20)');
     g.addColorStop(0.80,'rgba(80,150,150,0.06)');
     g.addColorStop(1.00,'rgba(0,0,0,0)');
     ctx.fillStyle=g; ctx.fillRect(0,0,256,256);
@@ -101,7 +79,6 @@
   }
   const diskTex = makeDiskTexture();
 
-  /* ---- puffy soft texture for nebula clouds (gentle falloff, no hard core) ---- */
   function makeNebulaTexture(){
     const c = document.createElement('canvas'); c.width=c.height=128;
     const ctx = c.getContext('2d');
@@ -115,7 +92,6 @@
   }
   const nebTex = makeNebulaTexture();
 
-  /* ---- faint background starfield (depth behind the galaxy) ---- */
   const BG = 2500;
   const bgPos = new Float32Array(BG*3);
   for(let i=0;i<BG;i++){
@@ -132,60 +108,47 @@
   const bgStars = new THREE.Points(bgGeo, bgMat);
   scene.add(bgStars);
 
-  /* ================================================================
-     THE GALAXY.  galaxyTilt (tilts disk) > galaxySpin (swirl) > body
-  ================================================================ */
   const galaxyTilt = new THREE.Group();
   const galaxySpin = new THREE.Group();
   galaxyTilt.add(galaxySpin);
-  galaxyTilt.rotation.x = 1.05;              // slightly more face-on so the spiral reads
+  galaxyTilt.rotation.x = 1.05;
   galaxyTilt.position.set(0, 0, -2600);
   scene.add(galaxyTilt);
 
   const GCOUNT = 26000, ARMS = 3, GMAX = 900;
 
-  // soft luminous disk body (a plane in the disk plane, so it tilts with it)
   const diskHaze = new THREE.Mesh(
-    new THREE.PlaneGeometry(GMAX*2.7, GMAX*2.7),   // spans a bit beyond the arms
-    new THREE.MeshBasicMaterial({
-      map:diskTex, transparent:true, opacity:0,
-      blending:THREE.AdditiveBlending, depthWrite:false,
-    })
+    new THREE.PlaneGeometry(GMAX*2.7, GMAX*2.7),
+    new THREE.MeshBasicMaterial({ map:diskTex, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false })
   );
   galaxySpin.add(diskHaze);
 
   const gpos = new Float32Array(GCOUNT*3);
   const gcol = new Float32Array(GCOUNT*3);
-  const cCore = [1.00, 0.83, 0.50];          // warm gold nucleus
-  const cMid  = [0.62, 0.86, 0.92];          // cyan-white
-  const cEdge = [0.22, 0.72, 0.68];          // teal rim
+  const cCore = [1.00, 0.83, 0.50];
+  const cMid  = [0.62, 0.86, 0.92];
+  const cEdge = [0.22, 0.72, 0.68];
   function lerp3(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
 
   for(let i=0;i<GCOUNT;i++){
     const rnd = Math.random();
-    const rr = Math.pow(rnd, 1.15);                 // fuller mid/outer disk
+    const rr = Math.pow(rnd, 1.15);
     const radius = 40 + rr*GMAX;
     const arm = i % ARMS;
     const baseAngle = (arm/ARMS)*Math.PI*2;
-    const spin = radius*0.0052;                     // arm winding
-
-    // 70% ride the arms, 30% fill the disk diffusely (kills the empty gap)
+    const spin = radius*0.0052;
     const onArm = Math.random() > 0.30;
     const armWidth = 0.26 + 0.34*rr;
-    const angle = onArm ? (baseAngle + spin + (Math.random()-0.5)*armWidth*2)
-                        : (Math.random()*Math.PI*2);
-
-    const rj = (Math.random()-0.5) * (55 + 120*rr); // radial fuzz grows outward
+    const angle = onArm ? (baseAngle + spin + (Math.random()-0.5)*armWidth*2) : (Math.random()*Math.PI*2);
+    const rj = (Math.random()-0.5) * (55 + 120*rr);
     const rad2 = radius + rj;
     const px = Math.cos(angle)*rad2 + (Math.random()-0.5)*18;
     const py = Math.sin(angle)*rad2 + (Math.random()-0.5)*18;
     const thick = (Math.random()-0.5) * ((1-rr)*80 + 16);
     gpos[i*3+0]=px; gpos[i*3+1]=py; gpos[i*3+2]=thick;
-
-    const col = rr < 0.45 ? lerp3(cCore, cMid, rr/0.45)
-                          : lerp3(cMid, cEdge, (rr-0.45)/0.55);
+    const col = rr < 0.45 ? lerp3(cCore, cMid, rr/0.45) : lerp3(cMid, cEdge, (rr-0.45)/0.55);
     let b = 0.55 + 0.45*(1-rr) + Math.random()*0.25;
-    if(!onArm) b *= 0.7;                            // disk-fill a touch dimmer
+    if(!onArm) b *= 0.7;
     gcol[i*3+0]=col[0]*b; gcol[i*3+1]=col[1]*b; gcol[i*3+2]=col[2]*b;
   }
   const gGeo = new THREE.BufferGeometry();
@@ -198,54 +161,43 @@
   const galaxyPoints = new THREE.Points(gGeo, gMat);
   galaxySpin.add(galaxyPoints);
 
-  /* ---- (1) TWINKLE: keep a pristine copy of the colors + a random phase
-       per point, then breathe each point's brightness in animate() ---- */
   const baseCol = gcol.slice(0);
   const twPhase = new Float32Array(GCOUNT);
   for(let i=0;i<GCOUNT;i++) twPhase[i] = Math.random()*Math.PI*2;
 
-  /* ---- (2) NEBULA CLOUDS: a few big soft additive puffs in amber & teal
-       (one faint blue to tie into the knots). Parented to the swirl so they
-       drift around with the galaxy; each breathes opacity + bobs slowly. ---- */
-  const NEB_COLORS = [0xffb066, 0x33c4ba, 0xffc98a, 0x2fb6c9, 0xffb066,
-                      0x35cbbf, 0x9fd0ff, 0xffbe86, 0x38c2b6];
+  const NEB_COLORS = [0xffb066, 0x33c4ba, 0xffc98a, 0x2fb6c9, 0xffb066, 0x35cbbf, 0x9fd0ff, 0xffbe86, 0x38c2b6];
   const nebulas = [];
   for(let k=0;k<NEB_COLORS.length;k++){
     const m = new THREE.SpriteMaterial({
       map:nebTex, color:NEB_COLORS[k], transparent:true, opacity:0,
       blending:THREE.AdditiveBlending, depthWrite:false,
     });
-    m.rotation = Math.random()*Math.PI*2;      // vary orientation of the ellipse
+    m.rotation = Math.random()*Math.PI*2;
     const s = new THREE.Sprite(m);
     const ang = Math.random()*Math.PI*2;
     const rad = (0.25 + Math.random()*0.62)*GMAX;
     const z0  = (Math.random()-0.5)*60;
     s.position.set(Math.cos(ang)*rad, Math.sin(ang)*rad, z0);
     const sx = 320 + Math.random()*360;
-    const sy = sx*(0.6 + Math.random()*0.5);   // ellipse -> cloudy, not perfect discs
+    const sy = sx*(0.6 + Math.random()*0.5);
     s.scale.set(sx, sy, 1);
     galaxySpin.add(s);
-    nebulas.push({ s, m, z0,
-      base:  0.10 + Math.random()*0.09,
-      phase: Math.random()*Math.PI*2,
-      speed: 0.10 + Math.random()*0.18 });
+    nebulas.push({ s, m, z0, base: 0.10 + Math.random()*0.09, phase: Math.random()*Math.PI*2, speed: 0.10 + Math.random()*0.18 });
   }
 
-  /* ---- (3) STAR-FORMING KNOTS: bright icy-blue points hugging the arms,
-       each with its own pulse phase so they shimmer independently. ---- */
   const K = 64;
   const kpos = new Float32Array(K*3);
   const kcol = new Float32Array(K*3);
   const kBase  = new Float32Array(K*3);
   const kPhase = new Float32Array(K);
-  const knotColor = [0.75, 0.90, 1.00];        // icy blue
+  const knotColor = [0.75, 0.90, 1.00];
   for(let j=0;j<K;j++){
     const rr = 0.30 + Math.random()*0.60;
     const radius = 40 + rr*GMAX;
     const arm = j % ARMS;
     const baseAngle = (arm/ARMS)*Math.PI*2;
     const spin = radius*0.0052;
-    const angle = baseAngle + spin + (Math.random()-0.5)*0.14;   // tight to the arm
+    const angle = baseAngle + spin + (Math.random()-0.5)*0.14;
     kpos[j*3+0] = Math.cos(angle)*radius + (Math.random()-0.5)*28;
     kpos[j*3+1] = Math.sin(angle)*radius + (Math.random()-0.5)*28;
     kpos[j*3+2] = (Math.random()-0.5)*22;
@@ -264,24 +216,16 @@
   const knots = new THREE.Points(knotGeo, knotMat);
   galaxySpin.add(knots);
 
-  // calmer nucleus (smaller than before so it stops blowing out)
-  const coreMat = new THREE.SpriteMaterial({
-    map:glowTex, color:0xffcf9a, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false,
-  });
+  const coreMat = new THREE.SpriteMaterial({ map:glowTex, color:0xffcf9a, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
   const core = new THREE.Sprite(coreMat);
   core.scale.set(360, 360, 1);
   galaxySpin.add(core);
 
-  const coreHotMat = new THREE.SpriteMaterial({
-    map:glowTex, color:0xffffff, transparent:true, opacity:0,
-    blending:THREE.AdditiveBlending, depthWrite:false,
-  });
+  const coreHotMat = new THREE.SpriteMaterial({ map:glowTex, color:0xffffff, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false });
   const coreHot = new THREE.Sprite(coreHotMat);
   coreHot.scale.set(140, 140, 1);
   galaxySpin.add(coreHot);
 
-  /* ---- scroll -> progress ---- */
   let targetProgress = 0, progress = 0;
   function computeScroll(){
     const max = document.body.scrollHeight - innerHeight;
@@ -290,12 +234,21 @@
   addEventListener('scroll', computeScroll, { passive:true });
   computeScroll();
 
-  /* ---- mouse parallax ---- */
   let mx=0, my=0, lookX=0, lookY=0;
   addEventListener('mousemove', e=>{
     mx = e.clientX/innerWidth - 0.5;
     my = e.clientY/innerHeight - 0.5;
   });
+
+  /* scene-to-scene link: fade to black near the bottom of scroll, then move on */
+  let transitioning = false;
+  const fadeEl = document.getElementById('trans-fade');
+  function goNext(){
+    if(transitioning) return;
+    transitioning = true;
+    fadeEl.style.opacity = '1';
+    setTimeout(()=>{ window.location.href = '4-solar-system.html'; }, 1250);
+  }
 
   const clock = new THREE.Clock();
   function smooth(x){ return MU.smoothstep(x, 0, 1); }
@@ -306,7 +259,7 @@
     progress += (targetProgress - progress) * 0.06;
     const p = progress;
 
-    const camZ = 600 - p*2900;                 // 600 -> -2300
+    const camZ = 600 - p*2900;
     camera.position.set(0, 0, camZ);
 
     const targetLookX = mx*40, targetLookY = -my*40;
@@ -314,7 +267,7 @@
     lookY += (targetLookY - lookY)*0.05;
     camera.lookAt(lookX, lookY, camZ - 500);
 
-    galaxySpin.rotation.z += 0.0009;                              // the revolve she liked
+    galaxySpin.rotation.z += 0.0009;
     galaxyTilt.rotation.x = 1.05 + smooth(MU.clamp((p-0.6)/0.4, 0, 1))*0.34;
 
     const fade = MU.clamp((p - 0.03)/0.20, 0, 1);
@@ -324,9 +277,7 @@
     coreHotMat.opacity = fade * 0.9;
     bgMat.opacity      = 0.5 * (1 - fade*0.4);
 
-    // only spend cycles on the "alive" layers once the galaxy is actually showing
     if(fade > 0.001){
-      // (1) twinkle the disk stars — gentle per-point brightness shimmer
       const carr = gGeo.attributes.color.array;
       for(let i=0;i<GCOUNT;i++){
         const f = 0.80 + 0.20*Math.sin(t*1.5 + twPhase[i]);
@@ -336,14 +287,12 @@
       }
       gGeo.attributes.color.needsUpdate = true;
 
-      // (2) nebula clouds — breathe opacity, drift slowly in/out of the plane
       for(const n of nebulas){
         const breathe = 0.65 + 0.35*Math.sin(t*n.speed + n.phase);
         n.m.opacity = fade * n.base * breathe;
         n.s.position.z = n.z0 + Math.sin(t*n.speed*0.7 + n.phase)*22;
       }
 
-      // (3) star-forming knots — independent pulse per knot + soft size breath
       const karr = knotGeo.attributes.color.array;
       for(let j=0;j<K;j++){
         const f = 0.45 + 0.55*Math.abs(Math.sin(t*1.1 + kPhase[j]));
@@ -355,6 +304,8 @@
       knotMat.opacity = fade * 0.95;
       knotMat.size    = 10 + 2.2*Math.sin(t*0.9);
     }
+
+    if(p > 0.985) goNext();
 
     renderer.render(scene, camera);
   }

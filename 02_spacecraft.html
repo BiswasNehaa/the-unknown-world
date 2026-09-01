@@ -3,143 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Unknown — Spacecraft Reveal (preview)</title>
+<title>The Unknown — Spacecraft</title>
 <style>
-  :root{
-    --amber:#e8b06b;
-    --teal:#3fa9a0;
-    --black:#050403;
-  }
+  :root{ --amber:#e8b06b; --teal:#3fa9a0; --black:#050403; }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{ background:var(--black); }
   body{
-    background:var(--black);
-    color:#fff;
+    background:var(--black); color:#fff;
     font-family:'Courier New', monospace;
-    height:420vh;            /* scroll room for the reveal */
-    overflow-x:hidden;
+    height:420vh; overflow-x:hidden;
   }
-
-  #scene{
-    position:fixed; inset:0;
-    width:100%; height:100vh;
-    z-index:1;
-    background:var(--black);
-  }
+  #scene{ position:fixed; inset:0; width:100%; height:100vh; z-index:1; background:var(--black); }
   #scene canvas{ display:block; }
-
-  #overlay{
-    position:fixed; inset:0;
-    z-index:2;
-    pointer-events:none;      /* lets scroll through, buttons re-enable below */
-  }
-
-  /* --- mode switcher (the only clickable thing) --- */
-  #modes{
-    position:absolute;
-    top:22px; left:50%;
-    transform:translateX(-50%);
-    display:flex; gap:10px;
-    pointer-events:auto;
-    flex-wrap:wrap;
-    justify-content:center;
-    padding:0 12px;
-  }
-  .mode-btn{
-    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
-    letter-spacing:2px;
-    text-transform:uppercase;
-    font-size:0.7rem;
-    color:#cfe9e6;
-    background:rgba(10,18,18,0.55);
-    border:1px solid rgba(63,169,160,0.45);
-    padding:9px 14px;
-    border-radius:2px;
-    cursor:pointer;
-    backdrop-filter:blur(3px);
-    transition:all 0.25s ease;
-  }
-  .mode-btn:hover{ border-color:var(--amber); color:#fff; }
-  .mode-btn.active{
-    color:var(--black);
-    background:var(--amber);
-    border-color:var(--amber);
-    box-shadow:0 0 18px rgba(232,176,107,0.5);
-  }
-
-  /* --- little caption describing the current mode --- */
-  #caption{
-    position:absolute;
-    top:74px; left:50%;
-    transform:translateX(-50%);
-    text-align:center;
-    color:#8aa3a0;
-    letter-spacing:3px;
-    font-size:0.72rem;
-    width:100%;
-    padding:0 20px;
-    text-transform:uppercase;
-  }
-
+  #overlay{ position:fixed; inset:0; z-index:2; pointer-events:none; }
   #scroll-hint{
-    position:absolute;
-    bottom:34px; left:50%;
-    transform:translateX(-50%);
-    color:#8fdfd8;
-    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
-    letter-spacing:7px;
-    font-size:0.8rem;
-    text-transform:uppercase;
-    text-align:center;
+    position:absolute; bottom:34px; left:50%; transform:translateX(-50%);
+    color:#8fdfd8; font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
+    letter-spacing:7px; font-size:0.8rem; text-transform:uppercase; text-align:center;
   }
-  #scroll-hint .arrow{
-    display:block;
-    margin-top:10px;
-    font-size:1.05rem;
-    animation:bob 1.9s ease-in-out infinite;
-  }
-  @keyframes bob{
-    0%,100%{ transform:translateY(0);  opacity:0.45; }
-    50%    { transform:translateY(9px); opacity:1; }
-  }
-
-  #note{
-    position:absolute;
-    bottom:10px; left:50%;
-    transform:translateX(-50%);
-    color:#4c5a59;
-    font-size:0.62rem;
-    letter-spacing:1px;
-    text-align:center;
-    width:100%;
-  }
+  #scroll-hint .arrow{ display:block; margin-top:10px; font-size:1.05rem; animation:bob 1.9s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); opacity:0.45; } 50%{ transform:translateY(9px); opacity:1; } }
+  #trans-fade{ position:fixed; inset:0; z-index:9999; background:#000; opacity:1; pointer-events:none; transition:opacity 1.2s ease; }
 </style>
 </head>
 <body>
 
   <div id="scene"></div>
-
   <div id="overlay">
-    <div id="modes">
-      <button class="mode-btn" data-mode="follow">Glint &rarr; Follow</button>
-      <button class="mode-btn active" data-mode="passby">Glides Past</button>
-      <button class="mode-btn" data-mode="leading">Ahead, Leading</button>
-    </div>
-    <div id="caption"></div>
     <div id="scroll-hint">SCROLL<span class="arrow">&#8595;</span></div>
-    <div id="note">preview harness &middot; pick a style, then scroll &middot; switching resets to top</div>
   </div>
+  <div id="trans-fade"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-  /* ================================================================
-     THE UNKNOWN — spacecraft reveal PREVIEW (3 styles to compare)
-     Same starfield/scroll spine as the locked opening; only the way
-     the ship enters changes per mode. Nothing here touches index.html.
-  ================================================================ */
-
   if('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);
+  requestAnimationFrame(()=>{ document.getElementById('trans-fade').style.opacity = '0'; });
 
   const MU = THREE.MathUtils;
   const sceneEl = document.getElementById('scene');
@@ -147,113 +46,86 @@
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x050403, 0.00040);
 
-  const camera = new THREE.PerspectiveCamera(
-    70, window.innerWidth / window.innerHeight, 0.1, 6000
-  );
+  const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 6000);
   camera.position.set(0, 0, 600);
 
   const renderer = new THREE.WebGLRenderer({ antialias:true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
   sceneEl.appendChild(renderer.domElement);
 
-  /* ---- soft round sprite (stars + engine glow) ---- */
   function makeGlowTexture(){
-    const c = document.createElement('canvas');
-    c.width = c.height = 64;
+    const c = document.createElement('canvas'); c.width=c.height=64;
     const ctx = c.getContext('2d');
     const g = ctx.createRadialGradient(32,32,0, 32,32,32);
     g.addColorStop(0.0, 'rgba(255,255,255,1)');
     g.addColorStop(0.2, 'rgba(255,255,255,0.9)');
     g.addColorStop(0.5, 'rgba(255,255,255,0.25)');
     g.addColorStop(1.0, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,64,64);
+    ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
     return new THREE.CanvasTexture(c);
   }
   const glowTex = makeGlowTexture();
 
-  /* ---- starfield ---- */
   const STAR_COUNT = 6000;
   const positions = new Float32Array(STAR_COUNT * 3);
   const colors    = new Float32Array(STAR_COUNT * 3);
-  const palette = [
-    [1.00,1.00,1.00],[1.00,1.00,1.00],
-    [0.91,0.69,0.42],[0.25,0.66,0.63],
-  ];
+  const palette = [[1,1,1],[1,1,1],[0.91,0.69,0.42],[0.25,0.66,0.63]];
   for(let i=0;i<STAR_COUNT;i++){
     positions[i*3+0] = (Math.random()-0.5) * 2000;
     positions[i*3+1] = (Math.random()-0.5) * 2000;
     positions[i*3+2] = -2600 + Math.random() * 3400;
     const col = palette[(Math.random()*palette.length)|0];
     const b = 0.6 + Math.random()*0.4;
-    colors[i*3+0] = col[0]*b;
-    colors[i*3+1] = col[1]*b;
-    colors[i*3+2] = col[2]*b;
+    colors[i*3+0] = col[0]*b; colors[i*3+1] = col[1]*b; colors[i*3+2] = col[2]*b;
   }
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   starGeo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
   const starMat = new THREE.PointsMaterial({
     size:6, map:glowTex, vertexColors:true, transparent:true,
-    opacity:0.25, depthWrite:false, blending:THREE.AdditiveBlending,
-    sizeAttenuation:true,
+    opacity:0.25, depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true,
   });
   const stars = new THREE.Points(starGeo, starMat);
   scene.add(stars);
 
-  /* ================================================================
-     THE SHIP — stylized sleek craft from primitives, v2.
-     Reads as a spaceship (cockpit + wings + twin engines), not a
-     missile. NOSE points toward -Z (forward / away from a +Z camera).
-  ================================================================ */
   const ship = new THREE.Group();
-
-  const silver = new THREE.MeshStandardMaterial({
-    color:0xc7ced6, metalness:0.9, roughness:0.34,
-  });
-  const darkTrim = new THREE.MeshStandardMaterial({
-    color:0x2b3138, metalness:0.7, roughness:0.5,
-  });
+  const silver = new THREE.MeshStandardMaterial({ color:0xc7ced6, metalness:0.9, roughness:0.34 });
+  const darkTrim = new THREE.MeshStandardMaterial({ color:0x2b3138, metalness:0.7, roughness:0.5 });
   const glass = new THREE.MeshStandardMaterial({
     color:0x2fb8b0, metalness:0.2, roughness:0.08,
     transparent:true, opacity:0.55, emissive:0x0b3b39, emissiveIntensity:0.6,
   });
 
-  // shorter, fatter fuselage (less missile-like)
   const bodyGeo = new THREE.CylinderGeometry(4.6, 7.6, 44, 28);
   const body = new THREE.Mesh(bodyGeo, silver);
-  body.rotation.x = -Math.PI/2;   // long axis -> Z
+  body.rotation.x = -Math.PI/2;
   ship.add(body);
 
-  // blunt, short nose taper at the front (-Z)
   const noseGeo = new THREE.ConeGeometry(4.6, 12, 28);
   const nose = new THREE.Mesh(noseGeo, silver);
-  nose.rotation.x = -Math.PI/2;   // tip toward -Z
+  nose.rotation.x = -Math.PI/2;
   nose.position.z = -28;
   ship.add(nose);
 
-  // cockpit canopy — low teal glass bubble near the front
   const canopyGeo = new THREE.SphereGeometry(4.4, 24, 16, 0, Math.PI*2, 0, Math.PI/2);
   const canopy = new THREE.Mesh(canopyGeo, glass);
   canopy.scale.set(1.0, 0.62, 1.7);
   canopy.position.set(0, 3.1, -12);
   ship.add(canopy);
 
-  // wide low wing plate across the hull + upturned wingtips
   const wingGeo = new THREE.BoxGeometry(60, 1.5, 22);
   const wing = new THREE.Mesh(wingGeo, silver);
   wing.position.set(0, -1.5, 8);
   ship.add(wing);
   const tipGeo = new THREE.BoxGeometry(1.6, 7, 14);
   const tipL = new THREE.Mesh(tipGeo, silver);
-  tipL.position.set(-29, 1.6, 8);  tipL.rotation.z =  0.5;
+  tipL.position.set(-29, 1.6, 8); tipL.rotation.z = 0.5;
   ship.add(tipL);
   const tipR = new THREE.Mesh(tipGeo, silver);
-  tipR.position.set( 29, 1.6, 8);  tipR.rotation.z = -0.5;
+  tipR.position.set(29, 1.6, 8); tipR.rotation.z = -0.5;
   ship.add(tipR);
 
-  // wider rear engine block + dorsal fin
   const tailGeo = new THREE.CylinderGeometry(7.6, 6.2, 8, 28);
   const tail = new THREE.Mesh(tailGeo, darkTrim);
   tail.rotation.x = -Math.PI/2;
@@ -265,7 +137,6 @@
   fin.rotation.x = 0.28;
   ship.add(fin);
 
-  // twin engine glows (additive sprites, face camera) + small teal center
   const engineSprites = [];
   function addEngine(x, colorHex, size){
     const m = new THREE.SpriteMaterial({
@@ -282,9 +153,7 @@
   addEngine( 5.5, 0xffb066, 20);
   addEngine( 0.0, 0x9fe8e0, 12);
   function setEngineGlow(op){ engineSprites.forEach(e=> e.m.opacity = op); }
-  function setEngineScale(mul){ engineSprites.forEach(e=> e.s.scale.set(e.base*mul, e.base*mul, 1)); }
 
-  // warm point light at the engines (a little glow spill on the hull)
   const enginePL = new THREE.PointLight(0xffb066, 1.2, 220);
   enginePL.position.set(0, 0, 36);
   ship.add(enginePL);
@@ -292,56 +161,39 @@
   ship.scale.setScalar(1.5);
   scene.add(ship);
 
-  /* ---- lighting for the ship (points/stars are unlit) ---- */
   scene.add(new THREE.AmbientLight(0x2a3340, 0.7));
   const key = new THREE.DirectionalLight(0xffffff, 1.15);
   key.position.set(-0.6, 0.8, 1);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x5fd6cc, 0.8);  // teal rim to catch silver edges
+  const rim = new THREE.DirectionalLight(0x5fd6cc, 0.8);
   rim.position.set(0.7, -0.3, -1);
   scene.add(rim);
 
-  /* ---- scroll -> progress (0..1), damped ---- */
   let targetProgress = 0, progress = 0;
   function computeScroll(){
-    const max = document.body.scrollHeight - window.innerHeight;
-    targetProgress = max > 0 ? (window.scrollY / max) : 0;
+    const max = document.body.scrollHeight - innerHeight;
+    targetProgress = max > 0 ? (scrollY / max) : 0;
   }
-  window.addEventListener('scroll', computeScroll, { passive:true });
+  addEventListener('scroll', computeScroll, { passive:true });
   computeScroll();
 
-  /* ---- mouse parallax ---- */
   let mx = 0, my = 0, lookX = 0, lookY = 0;
-  window.addEventListener('mousemove', (e)=>{
-    mx = (e.clientX / window.innerWidth  - 0.5);
-    my = (e.clientY / window.innerHeight - 0.5);
+  addEventListener('mousemove', (e)=>{
+    mx = (e.clientX / innerWidth  - 0.5);
+    my = (e.clientY / innerHeight - 0.5);
   });
 
-  /* ---- mode switcher ---- */
-  const CAPTIONS = {
-    follow : 'A distant glint grows — then you fall in behind it',
-    passby : 'The ship glides in and sweeps past you, up close',
-    leading: 'It leads the way ahead as you follow forward',
-  };
-  let mode = 'passby';
-  const captionEl = document.getElementById('caption');
-  captionEl.textContent = CAPTIONS[mode];
+  /* scene-to-scene link: fade to black near the bottom of scroll, then move on */
+  let transitioning = false;
+  const fadeEl = document.getElementById('trans-fade');
+  function goNext(){
+    if(transitioning) return;
+    transitioning = true;
+    fadeEl.style.opacity = '1';
+    setTimeout(()=>{ window.location.href = '3-galaxy.html'; }, 1250);
+  }
 
-  document.querySelectorAll('.mode-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      mode = btn.dataset.mode;
-      document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      captionEl.textContent = CAPTIONS[mode];
-      // reset so she can re-scroll and feel this style from the top
-      window.scrollTo(0, 0);
-      targetProgress = 0; progress = 0;
-    });
-  });
-
-  /* ---- animation ---- */
   const clock = new THREE.Clock();
-  function smooth(x){ return MU.smoothstep(x, 0, 1); }
 
   function animate(){
     requestAnimationFrame(animate);
@@ -349,42 +201,18 @@
     progress += (targetProgress - progress) * 0.06;
     const p = progress;
 
-    // idle life for the ship
     const bobY = Math.sin(t*0.8) * 3;
-    const bobX = Math.cos(t*0.55) * 4;
 
-    let camZ = 600, targetLookX = mx*40, targetLookY = -my*40;
+    // locked mode: PASSBY — ship glides in and sweeps past close-up
+    const camZ = 420 - p*140;
+    camera.position.set(0, 0, camZ);
+    const x = MU.lerp(-1100, 1100, p);
+    const z = camZ - 320 - Math.sin(p*Math.PI)*200;
+    ship.position.set(x, -40 + Math.sin(p*Math.PI)*26 + bobY*0.4, z);
+    ship.rotation.set(0, -Math.PI/2, 0.20*Math.sin(p*Math.PI));
+    setEngineGlow(0.85);
 
-    if(mode === 'follow'){
-      camZ = 600 - p*1500;
-      camera.position.set(0, 0, camZ);
-      const gap = MU.lerp(1600, 240, smooth(MU.clamp(p/0.92, 0, 1)));
-      ship.position.set(bobX, -20 + bobY, camZ - gap);
-      ship.rotation.set(0, 0, Math.sin(t*0.4)*0.05);
-      setEngineGlow(0.6 + 0.4*Math.abs(Math.sin(t*3)));
-      // brighten/enlarge the "glint" while far, ease off as it grows
-      setEngineScale(1 + (1 - smooth(MU.clamp(p/0.5,0,1)))*1.2);
-    }
-    else if(mode === 'leading'){
-      camZ = 600 - p*1500;
-      camera.position.set(0, 0, camZ);
-      ship.position.set(bobX, -16 + bobY, camZ - 300);
-      ship.rotation.set(0, 0, Math.sin(t*0.4)*0.05);
-      setEngineScale(1);
-      setEngineGlow(0.6 + 0.4*Math.abs(Math.sin(t*3)));
-    }
-    else { // passby
-      camZ = 420 - p*140;
-      camera.position.set(0, 0, camZ);
-      const x = MU.lerp(-1100, 1100, p);
-      const z = camZ - 320 - Math.sin(p*Math.PI)*200;   // dips closer at mid
-      ship.position.set(x, -40 + Math.sin(p*Math.PI)*26 + bobY*0.4, z);
-      ship.rotation.set(0, -Math.PI/2, 0.20*Math.sin(p*Math.PI));  // nose +X, slight bank
-      setEngineScale(1);
-      setEngineGlow(0.85);
-      targetLookX = mx*40 + x*0.22;                      // camera tracks it a touch
-    }
-
+    const targetLookX = mx*40 + x*0.22, targetLookY = -my*40;
     lookX += (targetLookX - lookX) * 0.05;
     lookY += (targetLookY - lookY) * 0.05;
     camera.lookAt(lookX, lookY, camZ - 500);
@@ -392,14 +220,16 @@
     stars.rotation.z = t * 0.008;
     starMat.opacity = 0.22 + 0.78*MU.clamp(p/0.18, 0, 1);
 
+    if(p > 0.985) goNext();
+
     renderer.render(scene, camera);
   }
   animate();
 
-  window.addEventListener('resize', ()=>{
-    camera.aspect = window.innerWidth / window.innerHeight;
+  addEventListener('resize', ()=>{
+    camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
   });
   </script>
 </body>
