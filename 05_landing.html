@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Unknown — Landing</title>
+    <style>
+        :root {
+            --amber: #e8b06b;
+            --teal: #3fa9a0;
+            --black: #050403;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            background: #fff;
+        }
+
+        body {
+            background: #fff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #scene {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        #scene canvas {
+            display: block;
+        }
+
+        #overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #prompt {
+            text-align: center;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+        }
+
+        #prompt .p1 {
+            color: #f0c890;
+            letter-spacing: 8px;
+            font-size: clamp(1rem, 3.2vw, 1.4rem);
+            text-shadow: 0 0 22px rgba(232, 176, 107, 0.55);
+        }
+
+        #enter-btn {
+            margin-top: 26px;
+            pointer-events: auto;
+            font-family: 'Century Gothic', 'Questrial', 'Segoe UI', system-ui, sans-serif;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            color: #0d1414;
+            background: var(--teal);
+            border: none;
+            padding: 14px 30px;
+            border-radius: 2px;
+            cursor: pointer;
+            box-shadow: 0 0 26px rgba(63, 169, 160, 0.55);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #enter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 34px rgba(63, 169, 160, 0.8);
+        }
+
+        #trans-fade {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #fff;
+            opacity: 1;
+            pointer-events: none;
+            transition: opacity 1.5s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="scene"></div>
+    <div id="overlay">
+        <div id="prompt">
+            <div class="p1">YOU HAVE ARRIVED</div>
+            <button id="enter-btn">Enter the Unknown &rarr;</button>
+        </div>
+    </div>
+    <div id="trans-fade"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        /* ================================================================
+           THE UNKNOWN — Landing / Lost City reveal.
+           Linked-to from 4-solar-system.html once the arrival zoom finishes.
+           Not scroll-driven: a timed camera settle (clouds part -> ruined
+           vista revealed -> ship at rest -> prompt fades in), then a click
+           carries the story onward (next scene: garden/lost-city, TBD).
+        ================================================================ */
+
+        const MU = THREE.MathUtils;
+        const sceneEl = document.getElementById('scene');
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x1a1410, 300, 2600);
+
+        const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 5000);
+        camera.position.set(0, 340, 720);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setClearColor(0x0c1414, 1);
+        sceneEl.appendChild(renderer.domElement);
+
+        /* ---- sky dome: cosmic midnight blue up top, warm amber at the horizon ---- */
+        function makeSkyTexture() {
+            const w = 8, h = 512;
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            const ctx = c.getContext('2d');
+            const g = ctx.createLinearGradient(0, 0, 0, h);
+            g.addColorStop(0.00, '#050912');
+            g.addColorStop(0.42, '#0c1a26');
+            g.addColorStop(0.68, '#3a2f2a');
+            g.addColorStop(0.82, '#7a5636');
+            g.addColorStop(0.92, '#e0a85f');
+            g.addColorStop(1.00, '#1a1410');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+            return new THREE.CanvasTexture(c);
+        }
+        const skyGeo = new THREE.SphereGeometry(2400, 24, 16);
+        const skyMat = new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false });
+        scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+        /* faint stars still visible high up */
+        function makeGlowTexture() {
+            const c = document.createElement('canvas'); c.width = c.height = 64;
+            const ctx = c.getContext('2d');
+            const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            g.addColorStop(0.0, 'rgba(255,255,255,1)');
+            g.addColorStop(0.3, 'rgba(255,255,255,0.6)');
+            g.addColorStop(1.0, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(c);
+        }
+        const glowTex = makeGlowTexture();
+        const starN = 500;
+        const starPos = new Float32Array(starN * 3);
+        for (let i = 0; i < starN; i++) {
+            const a = Math.random() * Math.PI * 2, el = Math.random() * 0.5 + 0.15;
+            const r = 2300;
+            starPos[i * 3] = Math.cos(a) * Math.cos(el) * r;
+            starPos[i * 3 + 1] = Math.sin(el) * r + 400;
+            starPos[i * 3 + 2] = Math.sin(a) * Math.cos(el) * r;
+        }
+        const starGeo = new THREE.BufferGeometry();
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ size: 3, map: glowTex, color: 0xdfe9ff, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending });
+        scene.add(new THREE.Points(starGeo, starMat));
+
+        /* ---- ground: mossy dark stone, subtle mottling ---- */
+        function makeGroundTexture() {
+            const s = 512; const c = document.createElement('canvas'); c.width = c.height = s;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#1b211d'; ctx.fillRect(0, 0, s, s);
+            for (let i = 0; i < 900; i++) {
+                const x = Math.random() * s, y = Math.random() * s, r = 3 + Math.random() * 14;
+                const mossy = Math.random() > 0.4;
+                ctx.fillStyle = mossy ? `rgba(45,66,50,${0.18 + Math.random() * 0.25})` : `rgba(70,68,62,${0.12 + Math.random() * 0.18})`;
+                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(10, 10);
+            return tex;
+        }
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(6000, 6000),
+            new THREE.MeshStandardMaterial({ map: makeGroundTexture(), roughness: 1, metalness: 0 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        /* ---- ruined monoliths: broken columns + fallen slabs scattered toward the horizon ---- */
+        const ruinMat = new THREE.MeshStandardMaterial({ color: 0x2c3230, roughness: 0.95, metalness: 0.05 });
+        const ruins = new THREE.Group();
+        function addColumn(x, z, h, tilt) {
+            const seg = 3 + (Math.random() * 2 | 0);
+            let y = 0;
+            for (let i = 0; i < seg; i++) {
+                const segH = h / seg * (0.7 + Math.random() * 0.5);
+                const r = 14 - i * 1.5;
+                const drum = new THREE.Mesh(new THREE.CylinderGeometry(r, r + 2, segH, 10), ruinMat);
+                drum.position.set(x + (Math.random() - 0.5) * 4, y + segH / 2, z + (Math.random() - 0.5) * 4);
+                drum.rotation.z = tilt * (i / seg);
+                drum.rotation.y = Math.random() * Math.PI;
+                ruins.add(drum);
+                y += segH * 0.94;
+                if (Math.random() < 0.18) break;   // some columns break off early
+            }
+        }
+        function addSlab(x, z, rot) {
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(60 + Math.random() * 60, 8, 30 + Math.random() * 30), ruinMat);
+            slab.position.set(x, 4, z);
+            slab.rotation.y = rot; slab.rotation.x = (Math.random() - 0.5) * 0.15; slab.rotation.z = (Math.random() - 0.5) * 0.1;
+            ruins.add(slab);
+        }
+        for (let i = 0; i < 22; i++) {
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 260 + Math.random() * 1400;
+            const x = Math.cos(ang) * dist, z = -Math.abs(Math.sin(ang)) * dist - 200;
+            if (Math.random() > 0.4) addColumn(x, z, 90 + Math.random() * 160, (Math.random() - 0.5) * 0.6);
+            else addSlab(x, z, Math.random() * Math.PI);
+        }
+        scene.add(ruins);
+
+        /* ---- the ship, landed, resting slightly tilted on the broken ground ---- */
+        const ship = new THREE.Group();
+        const silver = new THREE.MeshStandardMaterial({ color: 0xc7ced6, metalness: 0.85, roughness: 0.4 });
+        const darkTrim = new THREE.MeshStandardMaterial({ color: 0x2b3138, metalness: 0.7, roughness: 0.5 });
+        const glass = new THREE.MeshStandardMaterial({ color: 0x2fb8b0, metalness: 0.2, roughness: 0.08, transparent: true, opacity: 0.55, emissive: 0x0b3b39, emissiveIntensity: 0.4 });
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 7.6, 44, 28), silver);
+        body.rotation.x = -Math.PI / 2; ship.add(body);
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(4.6, 12, 28), silver);
+        nose.rotation.x = -Math.PI / 2; nose.position.z = -28; ship.add(nose);
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(4.4, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), glass);
+        canopy.scale.set(1.0, 0.62, 1.7); canopy.position.set(0, 3.1, -12); ship.add(canopy);
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(60, 1.5, 22), silver);
+        wing.position.set(0, -1.5, 8); ship.add(wing);
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(7.6, 6.2, 8, 28), darkTrim);
+        tail.rotation.x = -Math.PI / 2; tail.position.z = 26; ship.add(tail);
+        const idleGlowMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffb066, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+        const idleGlow = new THREE.Sprite(idleGlowMat); idleGlow.scale.set(14, 14, 1); idleGlow.position.set(0, 0, 32); ship.add(idleGlow);
+        ship.scale.setScalar(5.5);
+        ship.position.set(-90, 22, 140);
+        ship.rotation.set(0.05, 0.5, 0.08);
+        scene.add(ship);
+
+        /* ---- drifting dust / atmospheric particles ---- */
+        const DUST = 500;
+        const dustPos = new Float32Array(DUST * 3);
+        const dustVel = new Float32Array(DUST);
+        for (let i = 0; i < DUST; i++) {
+            dustPos[i * 3] = (Math.random() - 0.5) * 1400;
+            dustPos[i * 3 + 1] = Math.random() * 260;
+            dustPos[i * 3 + 2] = (Math.random() - 0.5) * 1400;
+            dustVel[i] = 4 + Math.random() * 10;
+        }
+        const dustGeo = new THREE.BufferGeometry();
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        const dustMat = new THREE.PointsMaterial({ size: 2.4, map: glowTex, color: 0xe8c090, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending });
+        const dust = new THREE.Points(dustGeo, dustMat);
+        scene.add(dust);
+
+        /* ---- lighting: cool moonlight key + warm horizon rim ---- */
+        scene.add(new THREE.AmbientLight(0x2a3038, 0.9));
+        const moon = new THREE.DirectionalLight(0xcfe0e8, 0.9);
+        moon.position.set(-300, 500, 200);
+        scene.add(moon);
+        const rim = new THREE.DirectionalLight(0xe8b06b, 0.55);
+        rim.position.set(600, 80, -400);
+        scene.add(rim);
+
+        /* ---- camera settle: crane down/forward over a few seconds, then hold ---- */
+        const camStart = new THREE.Vector3(0, 340, 720);
+        const camEnd = new THREE.Vector3(40, 90, 260);
+        const lookStart = new THREE.Vector3(0, 60, -400);
+        const lookEnd = new THREE.Vector3(-40, 30, -200);
+
+        let mx = 0, my = 0;
+        addEventListener('mousemove', e => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; });
+
+        const clock = new THREE.Clock();
+        const promptEl = document.getElementById('prompt');
+        const fadeEl = document.getElementById('trans-fade');
+        let promptShown = false;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+
+            const settle = MU.smoothstep(MU.clamp(t / 5.5, 0, 1), 0, 1);
+            const cx = MU.lerp(camStart.x, camEnd.x, settle) + mx * 20;
+            const cy = MU.lerp(camStart.y, camEnd.y, settle);
+            const cz = MU.lerp(camStart.z, camEnd.z, settle);
+            camera.position.set(cx, cy, cz);
+            const lx = MU.lerp(lookStart.x, lookEnd.x, settle);
+            const ly = MU.lerp(lookStart.y, lookEnd.y, settle) - my * 10;
+            const lz = MU.lerp(lookStart.z, lookEnd.z, settle);
+            camera.lookAt(lx, ly, lz);
+
+            idleGlowMat.opacity = 0.3 + 0.15 * Math.sin(t * 2.2);
+
+            for (let i = 0; i < DUST; i++) {
+                dustPos[i * 3 + 1] += dustVel[i] * 0.02;
+                if (dustPos[i * 3 + 1] > 280) dustPos[i * 3 + 1] = 0;
+            }
+            dustGeo.attributes.position.needsUpdate = true;
+
+            if (!promptShown && t > 5.2) {
+                promptShown = true;
+                promptEl.style.opacity = '1';
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        requestAnimationFrame(() => { fadeEl.style.opacity = '0'; });
+
+        /* click through: fades out, then moves the story on.
+           NOTE: next scene (garden / lost city interior) isn't built yet —
+           wire the href below once that file exists. */
+        document.getElementById('enter-btn').addEventListener('click', () => {
+            fadeEl.style.background = '#000';
+            fadeEl.style.opacity = '1';
+            // setTimeout(()=>{ window.location.href = '6-garden.html'; }, 1500);
+        });
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    </script>
+</body>
+
+</html>
