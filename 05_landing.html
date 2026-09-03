@@ -1,350 +1,374 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Unknown — Landing</title>
-    <style>
-        :root {
-            --amber: #e8b06b;
-            --teal: #3fa9a0;
-            --black: #050403;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Unknown — Landing</title>
+<style>
+  :root{ --amber:#e8b06b; --teal:#3fa9a0; --black:#050403; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{ background:#c3d2d0; }
+  body{ background:#c3d2d0; color:#fff; font-family:'Courier New', monospace; height:100vh; overflow:hidden; }
+  #scene{ position:fixed; inset:0; width:100%; height:100vh; z-index:1; }
+  #scene canvas{ display:block; }
+  #overlay{ position:fixed; inset:0; z-index:2; pointer-events:none; display:flex; align-items:center; justify-content:center; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  #prompt{ text-align:center; opacity:0; transition:opacity 1.8s ease; }
+  #prompt .p1{
+    color:#fff8ea; letter-spacing:8px; font-size:clamp(1rem, 3.2vw, 1.4rem);
+    text-shadow:0 0 26px rgba(255,220,160,0.7);
+  }
+  #enter-btn{
+    margin-top:26px; pointer-events:auto;
+    font-family:'Century Gothic','Questrial','Segoe UI',system-ui,sans-serif;
+    letter-spacing:5px; text-transform:uppercase; font-size:0.85rem;
+    color:#0d1414; background:var(--teal); border:none;
+    padding:14px 30px; border-radius:2px; cursor:pointer;
+    box-shadow:0 0 26px rgba(63,169,160,0.55);
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  #enter-btn:hover{ transform:translateY(-2px); box-shadow:0 0 34px rgba(63,169,160,0.8); }
 
-        html {
-            background: #fff;
-        }
-
-        body {
-            background: #fff;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        #scene {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100vh;
-            z-index: 1;
-        }
-
-        #scene canvas {
-            display: block;
-        }
-
-        #overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 2;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #prompt {
-            text-align: center;
-            opacity: 0;
-            transition: opacity 1.5s ease;
-        }
-
-        #prompt .p1 {
-            color: #f0c890;
-            letter-spacing: 8px;
-            font-size: clamp(1rem, 3.2vw, 1.4rem);
-            text-shadow: 0 0 22px rgba(232, 176, 107, 0.55);
-        }
-
-        #enter-btn {
-            margin-top: 26px;
-            pointer-events: auto;
-            font-family: 'Century Gothic', 'Questrial', 'Segoe UI', system-ui, sans-serif;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            color: #0d1414;
-            background: var(--teal);
-            border: none;
-            padding: 14px 30px;
-            border-radius: 2px;
-            cursor: pointer;
-            box-shadow: 0 0 26px rgba(63, 169, 160, 0.55);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        #enter-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 34px rgba(63, 169, 160, 0.8);
-        }
-
-        #trans-fade {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            background: #fff;
-            opacity: 1;
-            pointer-events: none;
-            transition: opacity 1.5s ease;
-        }
-    </style>
+  #trans-fade{ position:fixed; inset:0; z-index:9999; background:#fff; opacity:1; pointer-events:none; transition:opacity 2.4s ease; }
+</style>
 </head>
-
 <body>
 
-    <div id="scene"></div>
-    <div id="overlay">
-        <div id="prompt">
-            <div class="p1">YOU HAVE ARRIVED</div>
-            <button id="enter-btn">Enter the Unknown &rarr;</button>
-        </div>
+  <div id="scene"></div>
+  <div id="overlay">
+    <div id="prompt">
+      <div class="p1">YOU HAVE ARRIVED</div>
+      <button id="enter-btn">Enter the Unknown &rarr;</button>
     </div>
-    <div id="trans-fade"></div>
+  </div>
+  <div id="trans-fade"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        /* ================================================================
-           THE UNKNOWN — Landing / Lost City reveal.
-           Linked-to from 4-solar-system.html once the arrival zoom finishes.
-           Not scroll-driven: a timed camera settle (clouds part -> ruined
-           vista revealed -> ship at rest -> prompt fades in), then a click
-           carries the story onward (next scene: garden/lost-city, TBD).
-        ================================================================ */
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+  /* ================================================================
+     THE UNKNOWN — Landing v3.
+     Previous version used flat 2D "cutout" planes for mountains — they
+     broke (hard edges, a giant bright band) the moment the camera
+     moved through a grazing angle. This version is real 3D terrain:
+     a heightmapped mesh with a river carved in, lit with directional
+     + hemisphere light, and fog for atmospheric depth. Holds up under
+     camera movement because it's actual geometry, not a billboard.
+  ================================================================ */
 
-        const MU = THREE.MathUtils;
-        const sceneEl = document.getElementById('scene');
+  const MU = THREE.MathUtils;
+  const sceneEl = document.getElementById('scene');
 
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0x1a1410, 300, 2600);
+  const FOG_COLOR = 0xc3d2d0;
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(FOG_COLOR, 0.00042);
 
-        const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 5000);
-        camera.position.set(0, 340, 720);
+  const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.5, 9000);
+  camera.position.set(0, 780, 1300);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.setClearColor(0x0c1414, 1);
-        sceneEl.appendChild(renderer.domElement);
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(FOG_COLOR, 1);
+  sceneEl.appendChild(renderer.domElement);
 
-        /* ---- sky dome: cosmic midnight blue up top, warm amber at the horizon ---- */
-        function makeSkyTexture() {
-            const w = 8, h = 512;
-            const c = document.createElement('canvas'); c.width = w; c.height = h;
-            const ctx = c.getContext('2d');
-            const g = ctx.createLinearGradient(0, 0, 0, h);
-            g.addColorStop(0.00, '#050912');
-            g.addColorStop(0.42, '#0c1a26');
-            g.addColorStop(0.68, '#3a2f2a');
-            g.addColorStop(0.82, '#7a5636');
-            g.addColorStop(0.92, '#e0a85f');
-            g.addColorStop(1.00, '#1a1410');
-            ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-            return new THREE.CanvasTexture(c);
-        }
-        const skyGeo = new THREE.SphereGeometry(2400, 24, 16);
-        const skyMat = new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false });
-        scene.add(new THREE.Mesh(skyGeo, skyMat));
+  function makeGlowTexture(){
+    const c = document.createElement('canvas'); c.width=c.height=128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64,64,0, 64,64,64);
+    g.addColorStop(0.0,'rgba(255,255,255,1)');
+    g.addColorStop(0.3,'rgba(255,255,255,0.6)');
+    g.addColorStop(1.0,'rgba(255,255,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+    return new THREE.CanvasTexture(c);
+  }
+  const glowTex = makeGlowTexture();
 
-        /* faint stars still visible high up */
-        function makeGlowTexture() {
-            const c = document.createElement('canvas'); c.width = c.height = 64;
-            const ctx = c.getContext('2d');
-            const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-            g.addColorStop(0.0, 'rgba(255,255,255,1)');
-            g.addColorStop(0.3, 'rgba(255,255,255,0.6)');
-            g.addColorStop(1.0, 'rgba(255,255,255,0)');
-            ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
-            return new THREE.CanvasTexture(c);
-        }
-        const glowTex = makeGlowTexture();
-        const starN = 500;
-        const starPos = new Float32Array(starN * 3);
-        for (let i = 0; i < starN; i++) {
-            const a = Math.random() * Math.PI * 2, el = Math.random() * 0.5 + 0.15;
-            const r = 2300;
-            starPos[i * 3] = Math.cos(a) * Math.cos(el) * r;
-            starPos[i * 3 + 1] = Math.sin(el) * r + 400;
-            starPos[i * 3 + 2] = Math.sin(a) * Math.cos(el) * r;
-        }
-        const starGeo = new THREE.BufferGeometry();
-        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-        const starMat = new THREE.PointsMaterial({ size: 3, map: glowTex, color: 0xdfe9ff, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending });
-        scene.add(new THREE.Points(starGeo, starMat));
+  /* ---- backdrop: a single flat gradient quad, not a sphere.
+     (a low-poly sphere shows visible facets where the gradient
+     changes fast — that was the "pentagon sun" bug.) A 2-triangle
+     quad interpolates perfectly smoothly. ---- */
+  function makeSkyTexture(){
+    const w=8, h=512;
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0.00, '#7f97a6');
+    g.addColorStop(0.35, '#a9bcc0');
+    g.addColorStop(0.58, '#c9d3c4');
+    g.addColorStop(0.76, '#e7dcbe');
+    g.addColorStop(0.90, '#f2e2ba');
+    g.addColorStop(1.00, '#c3d2d0');
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    return new THREE.CanvasTexture(c);
+  }
+  const backdrop = new THREE.Mesh(
+    new THREE.PlaneGeometry(12000, 4200, 1, 1),
+    new THREE.MeshBasicMaterial({ map:makeSkyTexture(), fog:false, depthWrite:false })
+  );
+  backdrop.position.set(0, 900, -4000);
+  scene.add(backdrop);
 
-        /* ---- ground: mossy dark stone, subtle mottling ---- */
-        function makeGroundTexture() {
-            const s = 512; const c = document.createElement('canvas'); c.width = c.height = s;
-            const ctx = c.getContext('2d');
-            ctx.fillStyle = '#1b211d'; ctx.fillRect(0, 0, s, s);
-            for (let i = 0; i < 900; i++) {
-                const x = Math.random() * s, y = Math.random() * s, r = 3 + Math.random() * 14;
-                const mossy = Math.random() > 0.4;
-                ctx.fillStyle = mossy ? `rgba(45,66,50,${0.18 + Math.random() * 0.25})` : `rgba(70,68,62,${0.12 + Math.random() * 0.18})`;
-                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-            }
-            const tex = new THREE.CanvasTexture(c);
-            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(10, 10);
-            return tex;
-        }
-        const ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(6000, 6000),
-            new THREE.MeshStandardMaterial({ map: makeGroundTexture(), roughness: 1, metalness: 0 })
-        );
-        ground.rotation.x = -Math.PI / 2;
-        scene.add(ground);
+  function makeSunTexture(){
+    const s = 512;
+    const c = document.createElement('canvas'); c.width=c.height=s;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(s/2,s/2,0, s/2,s/2,s/2);
+    g.addColorStop(0.00,'rgba(255,255,250,0.95)');
+    g.addColorStop(0.10,'rgba(255,252,240,0.85)');
+    g.addColorStop(0.25,'rgba(255,245,220,0.55)');
+    g.addColorStop(0.45,'rgba(255,235,190,0.26)');
+    g.addColorStop(0.70,'rgba(255,225,170,0.09)');
+    g.addColorStop(1.00,'rgba(255,220,160,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,s,s);
+    return new THREE.CanvasTexture(c);
+  }
+  const sunMat = new THREE.SpriteMaterial({ map:makeSunTexture(), transparent:true, opacity:0.65, blending:THREE.AdditiveBlending, depthWrite:false, fog:false });
+  const sunSprite = new THREE.Sprite(sunMat);
+  sunSprite.scale.set(2100, 2100, 1);
+  sunSprite.position.set(0, 720, -3900);
+  scene.add(sunSprite);
 
-        /* ---- ruined monoliths: broken columns + fallen slabs scattered toward the horizon ---- */
-        const ruinMat = new THREE.MeshStandardMaterial({ color: 0x2c3230, roughness: 0.95, metalness: 0.05 });
-        const ruins = new THREE.Group();
-        function addColumn(x, z, h, tilt) {
-            const seg = 3 + (Math.random() * 2 | 0);
-            let y = 0;
-            for (let i = 0; i < seg; i++) {
-                const segH = h / seg * (0.7 + Math.random() * 0.5);
-                const r = 14 - i * 1.5;
-                const drum = new THREE.Mesh(new THREE.CylinderGeometry(r, r + 2, segH, 10), ruinMat);
-                drum.position.set(x + (Math.random() - 0.5) * 4, y + segH / 2, z + (Math.random() - 0.5) * 4);
-                drum.rotation.z = tilt * (i / seg);
-                drum.rotation.y = Math.random() * Math.PI;
-                ruins.add(drum);
-                y += segH * 0.94;
-                if (Math.random() < 0.18) break;   // some columns break off early
-            }
-        }
-        function addSlab(x, z, rot) {
-            const slab = new THREE.Mesh(new THREE.BoxGeometry(60 + Math.random() * 60, 8, 30 + Math.random() * 30), ruinMat);
-            slab.position.set(x, 4, z);
-            slab.rotation.y = rot; slab.rotation.x = (Math.random() - 0.5) * 0.15; slab.rotation.z = (Math.random() - 0.5) * 0.1;
-            ruins.add(slab);
-        }
-        for (let i = 0; i < 22; i++) {
-            const ang = Math.random() * Math.PI * 2;
-            const dist = 260 + Math.random() * 1400;
-            const x = Math.cos(ang) * dist, z = -Math.abs(Math.sin(ang)) * dist - 200;
-            if (Math.random() > 0.4) addColumn(x, z, 90 + Math.random() * 160, (Math.random() - 0.5) * 0.6);
-            else addSlab(x, z, Math.random() * Math.PI);
-        }
-        scene.add(ruins);
+  /* ================================================================
+     TERRAIN — heightmapped mesh (fbm value-noise), a carved river
+     path, vertex colors from valley-floor green to hazy rock-grey,
+     and real lighting so it actually reads as 3D, not a cutout.
+  ================================================================ */
+  function hash(x, y){ const n = Math.sin(x*127.1 + y*311.7) * 43758.5453123; return n - Math.floor(n); }
+  function noise2D(x, y){
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const h00 = hash(xi,yi), h10 = hash(xi+1,yi), h01 = hash(xi,yi+1), h11 = hash(xi+1,yi+1);
+    const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+    return MU.lerp(MU.lerp(h00,h10,u), MU.lerp(h01,h11,u), v);
+  }
+  function fbm(x, y, octaves){
+    let total=0, amp=0.5, freq=1, max=0;
+    for(let i=0;i<octaves;i++){
+      total += noise2D(x*freq, y*freq) * amp;
+      max += amp; amp *= 0.52; freq *= 2.05;
+    }
+    return total / max;   // ~0..1
+  }
+  function riverX(z){ return Math.sin(z*0.0016)*320 + Math.sin(z*0.00055)*200; }
 
-        /* ---- the ship, landed, resting slightly tilted on the broken ground ---- */
-        const ship = new THREE.Group();
-        const silver = new THREE.MeshStandardMaterial({ color: 0xc7ced6, metalness: 0.85, roughness: 0.4 });
-        const darkTrim = new THREE.MeshStandardMaterial({ color: 0x2b3138, metalness: 0.7, roughness: 0.5 });
-        const glass = new THREE.MeshStandardMaterial({ color: 0x2fb8b0, metalness: 0.2, roughness: 0.08, transparent: true, opacity: 0.55, emissive: 0x0b3b39, emissiveIntensity: 0.4 });
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 7.6, 44, 28), silver);
-        body.rotation.x = -Math.PI / 2; ship.add(body);
-        const nose = new THREE.Mesh(new THREE.ConeGeometry(4.6, 12, 28), silver);
-        nose.rotation.x = -Math.PI / 2; nose.position.z = -28; ship.add(nose);
-        const canopy = new THREE.Mesh(new THREE.SphereGeometry(4.4, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), glass);
-        canopy.scale.set(1.0, 0.62, 1.7); canopy.position.set(0, 3.1, -12); ship.add(canopy);
-        const wing = new THREE.Mesh(new THREE.BoxGeometry(60, 1.5, 22), silver);
-        wing.position.set(0, -1.5, 8); ship.add(wing);
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(7.6, 6.2, 8, 28), darkTrim);
-        tail.rotation.x = -Math.PI / 2; tail.position.z = 26; ship.add(tail);
-        const idleGlowMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffb066, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
-        const idleGlow = new THREE.Sprite(idleGlowMat); idleGlow.scale.set(14, 14, 1); idleGlow.position.set(0, 0, 32); ship.add(idleGlow);
-        ship.scale.setScalar(5.5);
-        ship.position.set(-90, 22, 140);
-        ship.rotation.set(0.05, 0.5, 0.08);
-        scene.add(ship);
+  function terrainHeight(x, z){
+    const depthT = MU.clamp(-z / 5200, 0, 1);             // 0 near camera, 1 far away
+    const ampScale = MU.lerp(40, 420, depthT*depthT);      // valley floor near, tall peaks far
+    let ridged = Math.abs(fbm(x*0.0016, z*0.0016, 5) - 0.5) * 2;   // jagged toward peaks
+    let rolling = fbm(x*0.0032+50, z*0.0032-50, 4);                 // soft rolling detail
+    let h = MU.lerp(rolling, ridged, depthT) * ampScale;
 
-        /* ---- drifting dust / atmospheric particles ---- */
-        const DUST = 500;
-        const dustPos = new Float32Array(DUST * 3);
-        const dustVel = new Float32Array(DUST);
-        for (let i = 0; i < DUST; i++) {
-            dustPos[i * 3] = (Math.random() - 0.5) * 1400;
-            dustPos[i * 3 + 1] = Math.random() * 260;
-            dustPos[i * 3 + 2] = (Math.random() - 0.5) * 1400;
-            dustVel[i] = 4 + Math.random() * 10;
-        }
-        const dustGeo = new THREE.BufferGeometry();
-        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-        const dustMat = new THREE.PointsMaterial({ size: 2.4, map: glowTex, color: 0xe8c090, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending });
-        const dust = new THREE.Points(dustGeo, dustMat);
-        scene.add(dust);
+    const distR = Math.abs(x - riverX(z));
+    const riverMask = 1 - MU.smoothstep(distR, 0, 240);
+    h = MU.lerp(h, -22, riverMask);                        // carve the river trough
+    return h;
+  }
 
-        /* ---- lighting: cool moonlight key + warm horizon rim ---- */
-        scene.add(new THREE.AmbientLight(0x2a3038, 0.9));
-        const moon = new THREE.DirectionalLight(0xcfe0e8, 0.9);
-        moon.position.set(-300, 500, 200);
-        scene.add(moon);
-        const rim = new THREE.DirectionalLight(0xe8b06b, 0.55);
-        rim.position.set(600, 80, -400);
-        scene.add(rim);
+  const TW = 7000, TD = 6200, SEG = 130;
+  const terrainGeo = new THREE.PlaneGeometry(TW, TD, SEG, SEG);
+  terrainGeo.rotateX(-Math.PI/2);
+  const posAttr = terrainGeo.attributes.position;
+  const colors = new Float32Array(posAttr.count * 3);
 
-        /* ---- camera settle: crane down/forward over a few seconds, then hold ---- */
-        const camStart = new THREE.Vector3(0, 340, 720);
-        const camEnd = new THREE.Vector3(40, 90, 260);
-        const lookStart = new THREE.Vector3(0, 60, -400);
-        const lookEnd = new THREE.Vector3(-40, 30, -200);
+  const cLow  = [0.15, 0.27, 0.17];   // dense jungle green (valley floor)
+  const cMid  = [0.33, 0.40, 0.30];   // mossy grey-green (mid slopes)
+  const cHigh = [0.78, 0.77, 0.68];   // pale rock, blends into the haze
+  const cRiver= [0.30, 0.46, 0.50];   // clearly blue-teal water, not just a duller green
 
-        let mx = 0, my = 0;
-        addEventListener('mousemove', e => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; });
+  for(let i=0;i<posAttr.count;i++){
+    const x = posAttr.getX(i);
+    const zLocal = posAttr.getZ(i);
+    const worldZ = zLocal - TD*0.15;           // push valley floor toward camera side
+    const h = terrainHeight(x, worldZ);
+    posAttr.setY(i, h);
+    posAttr.setZ(i, worldZ);
 
-        const clock = new THREE.Clock();
-        const promptEl = document.getElementById('prompt');
-        const fadeEl = document.getElementById('trans-fade');
-        let promptShown = false;
+    const distR = Math.abs(x - riverX(worldZ));
+    const riverMask = 1 - MU.smoothstep(distR, 0, 240);
+    const hn = MU.clamp((h + 30) / 420, 0, 1);
+    let col;
+    if(hn < 0.45) col = [
+      MU.lerp(cLow[0], cMid[0], hn/0.45),
+      MU.lerp(cLow[1], cMid[1], hn/0.45),
+      MU.lerp(cLow[2], cMid[2], hn/0.45),
+    ];
+    else col = [
+      MU.lerp(cMid[0], cHigh[0], (hn-0.45)/0.55),
+      MU.lerp(cMid[1], cHigh[1], (hn-0.45)/0.55),
+      MU.lerp(cMid[2], cHigh[2], (hn-0.45)/0.55),
+    ];
+    col = [
+      MU.lerp(col[0], cRiver[0], riverMask),
+      MU.lerp(col[1], cRiver[1], riverMask),
+      MU.lerp(col[2], cRiver[2], riverMask),
+    ];
+    colors[i*3]=col[0]; colors[i*3+1]=col[1]; colors[i*3+2]=col[2];
+  }
+  terrainGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  terrainGeo.computeVertexNormals();
 
-        function animate() {
-            requestAnimationFrame(animate);
-            const t = clock.getElapsedTime();
+  const terrainMat = new THREE.MeshLambertMaterial({ vertexColors:true, fog:true });
+  const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+  terrain.position.set(0, -20, 0);
+  scene.add(terrain);
 
-            const settle = MU.smoothstep(MU.clamp(t / 5.5, 0, 1), 0, 1);
-            const cx = MU.lerp(camStart.x, camEnd.x, settle) + mx * 20;
-            const cy = MU.lerp(camStart.y, camEnd.y, settle);
-            const cz = MU.lerp(camStart.z, camEnd.z, settle);
-            camera.position.set(cx, cy, cz);
-            const lx = MU.lerp(lookStart.x, lookEnd.x, settle);
-            const ly = MU.lerp(lookStart.y, lookEnd.y, settle) - my * 10;
-            const lz = MU.lerp(lookStart.z, lookEnd.z, settle);
-            camera.lookAt(lx, ly, lz);
+  /* ---- lighting: warm directional "sun" + cool hemisphere fill ---- */
+  const hemi = new THREE.HemisphereLight(0xcfe0dd, 0x2b3a2c, 0.75);
+  scene.add(hemi);
+  const sunLight = new THREE.DirectionalLight(0xfff2d8, 0.85);
+  sunLight.position.set(0, 720, -3900);
+  scene.add(sunLight);
+  scene.add(new THREE.AmbientLight(0x9aa6a0, 0.3));
 
-            idleGlowMat.opacity = 0.3 + 0.15 * Math.sin(t * 2.2);
+  /* ---- a few broken ruin columns, seated correctly on the terrain ---- */
+  const ruinMat = new THREE.MeshLambertMaterial({ color:0x3a423c, fog:true });
+  const ruins = new THREE.Group();
+  function addColumn(x, z, h){
+    const worldY = terrain.position.y + terrainHeight(x, z);
+    const seg = 3 + (Math.random()*2|0);
+    let y = worldY;
+    for(let i=0;i<seg;i++){
+      const segH = h/seg * (0.7 + Math.random()*0.5);
+      const r = 10 - i*1.1;
+      const drum = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(r,3), Math.max(r+1.6,4), segH, 9), ruinMat);
+      drum.position.set(x + (Math.random()-0.5)*3, y+segH/2, z + (Math.random()-0.5)*3);
+      drum.rotation.y = Math.random()*Math.PI;
+      ruins.add(drum);
+      y += segH*0.94;
+      if(Math.random() < 0.2) break;
+    }
+  }
+  for(let i=0;i<10;i++){
+    const z = -600 - Math.random()*2400;
+    const x = (Math.random()-0.5)*1800;
+    if(Math.abs(x - riverX(z)) < 260) continue;   // don't plant columns in the river
+    addColumn(x, z, 60 + Math.random()*120);
+  }
+  scene.add(ruins);
 
-            for (let i = 0; i < DUST; i++) {
-                dustPos[i * 3 + 1] += dustVel[i] * 0.02;
-                if (dustPos[i * 3 + 1] > 280) dustPos[i * 3 + 1] = 0;
-            }
-            dustGeo.attributes.position.needsUpdate = true;
+  /* ---- the ship, landed in a clearing near the river ---- */
+  const shipX = 260, shipZ = -420;
+  const shipY = terrain.position.y + terrainHeight(shipX, shipZ);
+  // sample the ground under the wingspan so the ship rests level on the actual slope,
+  // instead of a fixed guessed tilt that clipped through the hillside
+  const wingSpan = 135;   // ~half wingspan at final scale (4.5x)
+  const hL = terrain.position.y + terrainHeight(shipX - wingSpan, shipZ);
+  const hR = terrain.position.y + terrainHeight(shipX + wingSpan, shipZ);
+  const hF = terrain.position.y + terrainHeight(shipX, shipZ - wingSpan);
+  const hB = terrain.position.y + terrainHeight(shipX, shipZ + wingSpan);
+  const groundHigh = Math.max(shipY, hL, hR, hF, hB);
+  const rollAngle  = Math.atan2(hR - hL, wingSpan*2) * -1;
+  const pitchAngle = Math.atan2(hB - hF, wingSpan*2);
+  const ship = new THREE.Group();
+  const silver = new THREE.MeshStandardMaterial({ color:0xc7ced6, metalness:0.8, roughness:0.4 });
+  const darkTrim = new THREE.MeshStandardMaterial({ color:0x2b3138, metalness:0.65, roughness:0.5 });
+  const glass = new THREE.MeshStandardMaterial({ color:0x2fb8b0, metalness:0.2, roughness:0.1, transparent:true, opacity:0.55, emissive:0x0b3b39, emissiveIntensity:0.35 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(4.6,7.6,44,24), silver);
+  body.rotation.x = -Math.PI/2; ship.add(body);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(4.6,12,24), silver);
+  nose.rotation.x = -Math.PI/2; nose.position.z = -28; ship.add(nose);
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(4.4,20,14,0,Math.PI*2,0,Math.PI/2), glass);
+  canopy.scale.set(1.0,0.62,1.7); canopy.position.set(0,3.1,-12); ship.add(canopy);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(60,1.5,22), silver);
+  wing.position.set(0,-1.5,8); ship.add(wing);
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(7.6,6.2,8,24), darkTrim);
+  tail.rotation.x = -Math.PI/2; tail.position.z = 26; ship.add(tail);
+  const idleGlowMat = new THREE.SpriteMaterial({ map:glowTex, color:0xffb066, transparent:true, opacity:0.4, blending:THREE.AdditiveBlending, depthWrite:false, fog:false });
+  const idleGlow = new THREE.Sprite(idleGlowMat); idleGlow.scale.set(14,14,1); idleGlow.position.set(0,0,32); ship.add(idleGlow);
+  ship.scale.setScalar(4.5);
+  ship.position.set(shipX, groundHigh + 20, shipZ);
+  ship.rotation.set(pitchAngle, 0.9, rollAngle);
+  scene.add(ship);
 
-            if (!promptShown && t > 5.2) {
-                promptShown = true;
-                promptEl.style.opacity = '1';
-            }
+  /* ---- drifting mist wisps for foreground atmosphere ---- */
+  function makeWispTexture(){
+    const s=256; const c=document.createElement('canvas'); c.width=c.height=s;
+    const ctx=c.getContext('2d');
+    const g = ctx.createRadialGradient(s/2,s/2,0, s/2,s/2,s/2);
+    g.addColorStop(0,'rgba(255,255,255,0.85)');
+    g.addColorStop(0.5,'rgba(255,255,255,0.32)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,s,s);
+    return new THREE.CanvasTexture(c);
+  }
+  const wispTex = makeWispTexture();
+  const wisps = [];
+  for(let i=0;i<16;i++){
+    const m = new THREE.SpriteMaterial({ map:wispTex, transparent:true, opacity:0, depthWrite:false, fog:false });
+    const s = new THREE.Sprite(m);
+    const wz = -300 - Math.random()*2600;
+    s.position.set((Math.random()-0.5)*2200, 10+Math.random()*160, wz);
+    const sc = 300 + Math.random()*600;
+    s.scale.set(sc, sc*0.45, 1);
+    scene.add(s);
+    wisps.push({ s, m, base: 0.08 + Math.random()*0.12, phase: Math.random()*100 });
+  }
 
-            renderer.render(scene, camera);
-        }
-        animate();
+  /* ---- camera: aerial approach, settling into an overlook near the ship ---- */
+  const camStart = new THREE.Vector3(0, 780, 1300);
+  const camEnd   = new THREE.Vector3(shipX-140, 220, shipZ+380);
+  const lookStart = new THREE.Vector3(0, 260, -2800);
+  const lookEnd   = new THREE.Vector3(shipX, shipY+30, shipZ-200);
 
-        requestAnimationFrame(() => { fadeEl.style.opacity = '0'; });
+  let mx=0, my=0;
+  addEventListener('mousemove', e=>{ mx = e.clientX/innerWidth-0.5; my = e.clientY/innerHeight-0.5; });
 
-        /* click through: fades out, then moves the story on.
-           NOTE: next scene (garden / lost city interior) isn't built yet —
-           wire the href below once that file exists. */
-        document.getElementById('enter-btn').addEventListener('click', () => {
-            fadeEl.style.background = '#000';
-            fadeEl.style.opacity = '1';
-            // setTimeout(()=>{ window.location.href = '6-garden.html'; }, 1500);
-        });
+  const clock = new THREE.Clock();
+  const promptEl = document.getElementById('prompt');
+  const fadeEl = document.getElementById('trans-fade');
+  let promptShown = false;
 
-        addEventListener('resize', () => {
-            camera.aspect = innerWidth / innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(innerWidth, innerHeight);
-        });
-    </script>
+  function animate(){
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    const settle = MU.smoothstep(MU.clamp(t/7.5, 0, 1), 0, 1);
+    const cx = MU.lerp(camStart.x, camEnd.x, settle) + mx*20;
+    const cy = MU.lerp(camStart.y, camEnd.y, settle);
+    const cz = MU.lerp(camStart.z, camEnd.z, settle);
+    camera.position.set(cx, cy, cz);
+    const lx = MU.lerp(lookStart.x, lookEnd.x, settle);
+    const ly = MU.lerp(lookStart.y, lookEnd.y, settle) - my*10;
+    const lz = MU.lerp(lookStart.z, lookEnd.z, settle);
+    camera.lookAt(lx, ly, lz);
+
+    idleGlowMat.opacity = 0.3 + 0.15*Math.sin(t*2.2);
+    sunMat.opacity = 0.5 + 0.15*Math.sin(t*0.5);
+
+    const reveal = MU.smoothstep(MU.clamp((t-0.4)/2.2, 0, 1), 0, 1);
+    for(const w of wisps){
+      w.s.position.x += Math.sin(t*0.08 + w.phase)*0.35;
+      w.m.opacity = reveal * w.base * (0.7 + 0.3*Math.sin(t*0.25 + w.phase));
+    }
+
+    if(!promptShown && t > 6.8){
+      promptShown = true;
+      promptEl.style.opacity = '1';
+    }
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  requestAnimationFrame(()=>{ fadeEl.style.opacity = '0'; });
+
+  /* click through: fades to black, then moves the story on.
+     NOTE: next scene (garden / lost city interior) isn't built yet —
+     wire the href below once that file exists. */
+  document.getElementById('enter-btn').addEventListener('click', ()=>{
+    fadeEl.style.background = '#000';
+    fadeEl.style.transition = 'opacity 1.5s ease';
+    fadeEl.style.opacity = '1';
+    // setTimeout(()=>{ window.location.href = '6-garden.html'; }, 1500);
+  });
+
+  addEventListener('resize', ()=>{
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+  </script>
 </body>
-
 </html>
